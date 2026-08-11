@@ -1,6 +1,6 @@
-# Morrow
+# Morrow frontend shell
 
-A frontend-only homepage concept for a student and graduate opportunity platform. The project includes a responsive navbar, opportunity discovery hero, sample listings, brand sections, and footer. Search, sign-in, listings, newsletter, and social actions are presentation shells for future backend work.
+Morrow is a local React/Vite frontend concept for a student and graduate opportunity network. It contains sample data and interface-only interactions; no authentication, database, upload, application, crawler, analytics, or publishing service is connected.
 
 ## Run locally
 
@@ -9,12 +9,16 @@ npm install
 npm run dev
 ```
 
-Then open the local address shown in the terminal.
+Open the local address printed by Vite, normally `http://127.0.0.1:5173/`.
 
-## Production check
+## Main routes
 
-```bash
-npm run build
-```
-
-The production files are generated in `dist/`.
+- `/` - homepage
+- `/candidates` and `/candidates/resume`
+- `/jobs`, `/jobs/part-time`, `/jobs/internships`, `/jobs/entry-level`, `/jobs/recommended`
+- `/employers`, `/employers/candidates`, `/employers/post-job`
+- `/courses`
+- `/discover/jobs`, `/discover/hackathons`, `/discover/certifications`
+- `/portfolio-builder`
+- `/projects`
+- `/auth`
