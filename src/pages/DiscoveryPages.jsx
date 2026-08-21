@@ -241,20 +241,20 @@ export function CertificationsPage() {
         <Link className="button button--dark" to="/courses">Explore Morrow courses</Link>
       </PageIntro>
       <div className="page-container module-page">
-        <ModuleStrip
+        {/* <ModuleStrip
           label="Project module"
           title="Certification crawler"
           copy="Collects public course and certificate listings from Coursera and Microsoft Learn."
           status={statusLabel}
           tone={isLive ? 'sage' : 'blue'}
-        />
-        {results.source && (
+        />*/}
+        {/* {results.source && (
           <PreviewNotice>
             {isLive && 'Listings come from the Coursera and Microsoft Learn public catalogues. Opening a credential takes you to the provider\u2019s own site.'}
             {results.source === 'snapshot' && 'The crawler service is not responding, so these listings come from the last saved crawl.'}
             {results.source === 'sample' && 'Showing sample content. Start the crawler service to browse live listings.'}
           </PreviewNotice>
-        )}
+        )}*/}
 
         <section className="certification-browser" aria-labelledby="certificate-list-title">
           <div className="certification-filters">
