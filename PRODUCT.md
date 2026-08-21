@@ -14,7 +14,9 @@ Morrow is for university students and recent graduates, initially framed for a S
 
 ## Product Purpose
 
-This release is a frontend-only multi-page shell for a future student career network. It demonstrates candidate, employer, job discovery, course, crawler, portfolio, and practical-project experiences without authentication, database connections, application handling, crawler services, analytics, or uploads. Success means every core project module has a believable, navigable interface ready for later integration.
+This release is a multi-page shell for a student career network. It demonstrates candidate, employer, job discovery, course, crawler, portfolio, and practical-project experiences without authentication, application handling, analytics, or uploads. Success means every core project module has a believable, navigable interface ready for later integration.
+
+One module is now live rather than illustrative: the certification crawler collects public listings from Coursera and Microsoft Learn into a local database and serves them to `/discover/certifications`. Every other module remains interface-only, and the interface must keep saying so.
 
 ## Positioning
 
@@ -35,7 +37,7 @@ Avoid corporate LinkedIn-blue sameness, generic SaaS card grids, childish campus
 - Use a confident visual identity instead of default job-board conventions.
 - Show believable sample product UI so the future platform feels tangible.
 - Treat mobile as a primary experience, not a reduced desktop layout.
-- Clearly label mock data and frontend-only interactions so the shell never implies a live service.
+- Clearly label mock data and frontend-only interactions so the shell never implies a live service, and equally, never label live data as a preview.
 
 ## Accessibility and Inclusion
 

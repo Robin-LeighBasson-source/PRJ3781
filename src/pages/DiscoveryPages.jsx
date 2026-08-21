@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -22,15 +22,16 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { JobList, PageIntro, PreviewNotice, ProgressBar, SkillTags, StatusPill } from '../components/ProductUI.jsx'
-import { certifications, courses, hackathons, jobs, projects } from '../data/mockData.js'
+import { courses, hackathons, jobs, projects } from '../data/mockData.js'
 import { useToast } from '../components/ToastContext.jsx'
+import { fetchCertifications, fetchFacets, fetchHealth, relativeTime } from '../data/certificationsApi.js'
 
-function ModuleStrip({ label, title, copy, status = 'Connection pending' }) {
+function ModuleStrip({ label, title, copy, status = 'Connection pending', tone = 'blue' }) {
   return (
     <div className="module-strip">
       <span className="module-strip__icon"><Code2 size={20} aria-hidden="true" /></span>
       <div><p>{label}</p><h2>{title}</h2><span>{copy}</span></div>
-      <StatusPill tone="blue">{status}</StatusPill>
+      <StatusPill tone={tone}>{status}</StatusPill>
     </div>
   )
 }
@@ -113,34 +114,235 @@ export function HackathonsPage() {
   )
 }
 
-export function CertificationsPage() {
+// Mirrors the server-side vocabulary in server/src/normalize/taxonomy.js.
+const SKILL_LABELS = {
+  'software-development': 'Software development',
+  'data-analytics': 'Data & analytics',
+  'cloud-infrastructure': 'Cloud & infrastructure',
+  cybersecurity: 'Cybersecurity',
+  'ai-machine-learning': 'AI & machine learning',
+  databases: 'Databases',
+  networking: 'Networking',
+  'it-support': 'IT support',
+  'ux-design': 'UX & design',
+  'product-project-management': 'Product & project management',
+}
+
+const LEVEL_LABELS = {
+  beginner: 'Beginner',
+  foundation: 'Foundation',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+  unspecified: 'Not stated',
+}
+
+function CertificationRow({ certificate }) {
   const toast = useToast()
+  const meta = [LEVEL_LABELS[certificate.level] ?? certificate.level, certificate.duration, certificate.format]
+    .filter(Boolean)
+    .join(' - ')
+
+  return (
+    <article>
+      <span className="certificate-icon"><GraduationCap size={22} aria-hidden="true" /></span>
+      <div>
+        <p>{certificate.providerName}</p>
+        <h3>{certificate.title}</h3>
+        <span>{meta}</span>
+        {certificate.skills?.length > 0 && <SkillTags skills={certificate.skills.map((skill) => SKILL_LABELS[skill] ?? skill)} />}
+      </div>
+      {certificate.url ? (
+        <a
+          className="icon-button"
+          href={certificate.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${certificate.title} on ${certificate.providerName} (opens in a new tab)`}
+        >
+          <ExternalLink size={17} aria-hidden="true" />
+        </a>
+      ) : (
+        <button
+          className="icon-button"
+          type="button"
+          aria-label={`Preview ${certificate.title}`}
+          onClick={() => toast('This is sample content. Live links arrive with the next crawler run.')}
+        >
+          <ExternalLink size={17} aria-hidden="true" />
+        </button>
+      )}
+    </article>
+  )
+}
+
+export function CertificationsPage() {
+  const [skill, setSkill] = useState('')
+  const [type, setType] = useState('')
+  const [level, setLevel] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [results, setResults] = useState({ items: [], total: 0, source: null })
+  const [facets, setFacets] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [health, setHealth] = useState(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchHealth(controller.signal).then(setHealth).catch(() => {})
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    // Debounced so typing in the keyword field does not fire a request per keystroke.
+    const timer = window.setTimeout(() => {
+      setLoading(true)
+      const filters = { skill, type, level, q: keyword }
+      Promise.all([
+        fetchCertifications({ ...filters, pageSize: 24 }, controller.signal),
+        fetchFacets(filters, controller.signal),
+      ])
+        .then(([data, nextFacets]) => {
+          setResults(data)
+          setFacets(nextFacets)
+          setLoading(false)
+        })
+        .catch((error) => {
+          if (error.name !== 'AbortError') setLoading(false)
+        })
+    }, 300)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [skill, type, level, keyword])
+
+  const visible = (options, selected) =>
+    (options ?? []).filter((option) => option.count > 0 || option.id === selected)
+
+  const typeOptions = useMemo(() => visible(facets?.types, type), [facets, type])
+  const skillOptions = useMemo(() => visible(facets?.skills, skill), [facets, skill])
+  const levelOptions = useMemo(() => visible(facets?.levels, level), [facets, level])
+
+  const isLive = results.source === 'live'
+  const lastUpdated = relativeTime(health?.lastSuccessAt ?? health?.generatedAt)
+
+  const statusLabel = !results.source
+    ? 'Checking\u2026'
+    : isLive
+      ? (lastUpdated ? `Updated ${lastUpdated}` : 'Connected')
+      : results.source === 'snapshot'
+        ? 'Showing last saved crawl'
+        : 'Connection pending'
+
   return (
     <main id="main-content" className="product-page">
       <PageIntro eyebrow="Credentials" title="Certifications worth exploring." copy="Compare beginner-friendly credentials and map them to the kinds of roles you want to pursue." tone="sage">
         <Link className="button button--dark" to="/courses">Explore Morrow courses</Link>
       </PageIntro>
       <div className="page-container module-page">
-        <ModuleStrip label="Project module" title="Certification crawler" copy="Future service: collect public course and certificate details from learning providers." />
-        <PreviewNotice>Provider names show the intended information structure only. No live catalogue connection is active.</PreviewNotice>
+        <ModuleStrip
+          label="Project module"
+          title="Certification crawler"
+          copy="Collects public course and certificate listings from Coursera and Microsoft Learn."
+          status={statusLabel}
+          tone={isLive ? 'sage' : 'blue'}
+        />
+        {results.source && (
+          <PreviewNotice>
+            {isLive && 'Listings come from the Coursera and Microsoft Learn public catalogues. Opening a credential takes you to the provider\u2019s own site.'}
+            {results.source === 'snapshot' && 'The crawler service is not responding, so these listings come from the last saved crawl.'}
+            {results.source === 'sample' && 'Showing sample content. Start the crawler service to browse live listings.'}
+          </PreviewNotice>
+        )}
+
         <section className="certification-browser" aria-labelledby="certificate-list-title">
-          <div className="certification-filters"><p className="eyebrow">Filter credentials</p><label><span>Level</span><select defaultValue="All levels"><option>All levels</option><option>Beginner</option><option>Foundation</option></select></label><label><span>Format</span><select defaultValue="All formats"><option>All formats</option><option>Online</option><option>Self-paced</option></select></label></div>
+          <div className="certification-filters">
+            <p className="eyebrow">Filter credentials</p>
+            <label className="form-field form-field--with-icon">
+              <span>Search</span>
+              <div>
+                <Search size={18} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  placeholder="Try cloud or analytics"
+                />
+              </div>
+            </label>
+            <label>
+              <span>Technical skill</span>
+              <select value={skill} onChange={(event) => setSkill(event.target.value)}>
+                <option value="">All skills</option>
+                {skillOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label} ({option.count})</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Level</span>
+              <select value={level} onChange={(event) => setLevel(event.target.value)}>
+                <option value="">All levels</option>
+                {levelOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label} ({option.count})</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <div className="certification-results">
-            <div className="results-toolbar"><div><p className="eyebrow">Catalogue preview</p><h2 id="certificate-list-title">Popular starting points</h2></div></div>
-            {certifications.map((certificate) => (
-              <article key={certificate.title}>
-                <span className="certificate-icon"><GraduationCap size={22} /></span>
-                <div><p>{certificate.provider}</p><h3>{certificate.title}</h3><span>{certificate.level} - {certificate.duration} - {certificate.format}</span></div>
-                <button className="icon-button" type="button" aria-label={`Preview ${certificate.title}`} onClick={() => toast('External course links will be connected after the crawler integration.')}><ExternalLink size={17} /></button>
-              </article>
-            ))}
+            <div className="results-toolbar">
+              <div>
+                <p className="eyebrow">Catalogue</p>
+                <h2 id="certificate-list-title">
+                  {loading ? 'Loading credentials' : `${results.total} credential${results.total === 1 ? '' : 's'}`}
+                </h2>
+              </div>
+            </div>
+
+            {typeOptions.length > 0 && (
+              <div className="filter-chips" aria-label="Credential type">
+                <button type="button" className={type === '' ? 'is-active' : ''} aria-pressed={type === ''} onClick={() => setType('')}>
+                  All types
+                </button>
+                {typeOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={type === option.id ? 'is-active' : ''}
+                    aria-pressed={type === option.id}
+                    onClick={() => setType(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {results.items.length === 0 && !loading ? (
+              <div className="empty-state">
+                <Search size={28} aria-hidden="true" />
+                <h2>No credentials match those filters</h2>
+                <p>Try a broader skill, or reset the level and type.</p>
+              </div>
+            ) : (
+              results.items.map((certificate) => (
+                <CertificationRow key={certificate.id} certificate={certificate} />
+              ))
+            )}
+
+            {results.total > results.items.length && (
+              <p className="certification-results__more">
+                Showing {results.items.length} of {results.total}. Narrow the filters to see more specific results.
+              </p>
+            )}
           </div>
         </section>
       </div>
     </main>
   )
 }
-
 export function PortfolioBuilderPage() {
   const [name, setName] = useState('Your Name')
   const [headline, setHeadline] = useState('Student designer and thoughtful problem solver')

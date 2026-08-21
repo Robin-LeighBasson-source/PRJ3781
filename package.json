@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:api": "npm --workspace @morrow/server run dev",
+    "start:api": "npm --workspace @morrow/server run start",
+    "crawl": "npm --workspace @morrow/server run crawl --",
+    "crawl:export": "npm --workspace @morrow/server run export",
+    "test:server": "npm --workspace @morrow/server run test"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.8",
@@ -18,5 +23,8 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.0.5"
-  }
+  },
+  "workspaces": [
+    "server"
+  ]
 }
