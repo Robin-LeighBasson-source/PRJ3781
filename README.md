@@ -21,6 +21,44 @@ npm run dev:api    # API on http://127.0.0.1:8787
 npm run crawl      # populate the database (first run takes a few minutes)
 ```
 
+## Run locally with Docker
+
+Both services in one command, no Node or native build toolchain on the host:
+
+```bash
+docker compose up --build
+```
+
+- Frontend with hot reload: <http://localhost:5173>
+- API: <http://localhost:8787/api/health>
+
+`src/`, `public/`, `index.html`, `vite.config.js`, and `server/src/` are bind-mounted,
+so edits reload as usual. Dependencies live inside the image because
+`better-sqlite3` is compiled for the container rather than the host, so changes to
+either `package.json` need a `docker compose build`.
+
+Populate the database the same way, as a one-off container:
+
+```bash
+docker compose run --rm api npm run crawl
+docker compose run --rm api npm run crawl -- --provider=microsoft-learn --max-pages=5
+docker compose run --rm api npm run test:server
+```
+
+The database and the crawler's HTTP cache live in the `api-data` and `api-cache`
+volumes, so they survive rebuilds. `npm run crawl` still refreshes the tracked
+`public/data/certifications.json` snapshot in the working tree.
+
+To check the production bundle as nginx would serve it, on <http://localhost:8080>:
+
+```bash
+docker compose --profile preview up --build
+```
+
+Copy `.env.example` to `.env` to override the crawler settings; `docker compose`
+picks it up automatically. Clear everything, volumes included, with
+`docker compose down -v`.
+
 ## Main routes
 
 - `/` - homepage

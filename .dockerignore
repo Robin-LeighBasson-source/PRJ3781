@@ -1,0 +1,34 @@
+# Dependencies are installed inside the image; a host node_modules would carry
+# native builds for the host platform, not the container's.
+node_modules
+**/node_modules
+
+# Build output and caches
+dist
+.vite
+**/.vite
+.cache
+**/.cache
+
+# Local state and secrets
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+server/data
+
+# Repository and editor noise
+.git
+.gitignore
+.claude
+*.log
+npm-debug.log*
+.DS_Store
+*.swp
+
+# Docker's own files are never needed inside the build context copy
+Dockerfile
+.dockerignore
+docker-compose.yml

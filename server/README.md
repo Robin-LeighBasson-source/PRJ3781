@@ -21,6 +21,10 @@ npm run test:server                          # taxonomy unit tests
 
 `npm run dev` (the frontend) proxies `/api` to the API, so run both in separate terminals.
 
+In Docker, the same commands run as one-off containers against the `api` service, e.g.
+`docker compose run --rm api npm run crawl -- --provider=microsoft-learn`. See the
+Docker section of the [root README](../README.md).
+
 ## Crawl policy
 
 The providers here can and will block an impolite client, so politeness is enforced
