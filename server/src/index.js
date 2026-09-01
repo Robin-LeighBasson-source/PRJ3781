@@ -4,10 +4,16 @@ import { config } from './config.js'
 import { getDb } from './db/index.js'
 import { router } from './routes/certifications.js'
 import { startScheduler } from './crawl/scheduler.js'
+import { connectMongoDB } from './db/mongodb.js'
+import { productRouter } from './routes/productRequests.js'
 
 getDb()
 
+await connectMongoDB()
+
 const app = express()
+
+app.use(express.json())
 
 app.use(cors({
   origin(origin, callback) {
@@ -18,7 +24,7 @@ app.use(cors({
 }))
 
 app.use('/api', router)
-
+app.use('/api', productRouter)
 app.use((error, req, res, next) => {
   console.error('[api]', error.message)
   res.status(500).json({ error: 'internal error' })
