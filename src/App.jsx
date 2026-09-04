@@ -15,6 +15,7 @@ import {
 } from './pages/DiscoveryPages.jsx'
 import { AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
 import { ToastContext } from './components/ToastContext.jsx'
+import ProjectDetailsPage from "./pages/ProjectDetailsPage.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -49,6 +50,8 @@ function AppRoutes() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="auth" element={<AuthPage />} />
         <Route path="*" element={<NotFoundPage />} />
+       <Route path="/projects" element={<ProjectsPage />} />
+<Route path="/projects/:id" element={<ProjectDetailsPage />} />
       </Route>
     </Routes>
   )

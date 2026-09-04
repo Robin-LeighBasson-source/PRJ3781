@@ -37,6 +37,7 @@ productRouter.get("/product-requests/:id", async (req, res) => {
   }
 });
 
+
 // Create a request
 productRouter.post("/product-requests", async (req, res) => {
   try {

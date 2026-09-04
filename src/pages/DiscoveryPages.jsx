@@ -566,15 +566,12 @@ export function ProjectsPage() {
 
         <p className="project-description">{project.description}</p>
 
-        <button
-          className="text-action"
-          type="button"
-          onClick={() =>
-            toast('Project details and collaboration will connect here later.')
-          }
-        >
-          View project <ArrowUpRight size={16} />
-        </button>
+       <Link
+  to={`/projects/${project._id}`}
+  className="text-action"
+>
+  View project <ArrowUpRight size={16} />
+</Link>
       </article>
     ))
   )}
