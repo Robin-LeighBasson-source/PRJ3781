@@ -3,15 +3,14 @@ import cors from 'cors'
 import { config } from './config.js'
 import { getDb } from './db/index.js'
 import { optionalAuth } from './auth/middleware.js'
-import { seedDemoAccounts } from './auth/repository.js'
-import { createEntraProvider } from './auth/entra.js'
+import { removeLegacyDemoAccounts } from './auth/repository.js'
 import { createAuthRouter } from './routes/auth.js'
 import { router as certificationsRouter } from './routes/certifications.js'
 import { workspaceRouter } from './routes/workspaces.js'
 
-export function createApp({ entraProvider = createEntraProvider(config.auth.entra) } = {}) {
+export function createApp() {
   getDb()
-  seedDemoAccounts()
+  removeLegacyDemoAccounts()
 
   const app = express()
   app.disable('x-powered-by')
@@ -25,7 +24,7 @@ export function createApp({ entraProvider = createEntraProvider(config.auth.entr
   }))
   app.use(express.json({ limit: '32kb' }))
   app.use(optionalAuth)
-  app.use('/api/auth', createAuthRouter({ entraProvider }))
+  app.use('/api/auth', createAuthRouter())
   app.use('/api', workspaceRouter)
   app.use('/api', certificationsRouter)
 
