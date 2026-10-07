@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@azure/msal-node": "^6.0.0",
+    "@mendable/firecrawl-js": "^4.35.0",
     "better-sqlite3": "^11.7.0",
     "cheerio": "^1.2.0",
     "cors": "^2.8.5",
