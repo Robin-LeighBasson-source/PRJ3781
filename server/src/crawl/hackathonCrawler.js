@@ -24,14 +24,14 @@ const app = new FirecrawlApp({
 });
 
 //Set up file paths
-const outputPath = path.join(__dirname, "../../../public/data/jobs.json");
-const poolPath = path.join(__dirname, "jobsPool.json");
-const statePath = path.join(__dirname, "searchState.json");
+const outputPath = path.join(__dirname, "../../../public/data/hackathons.json");
+const poolPath = path.join(__dirname, "hackathonsPool.json");
+const statePath = path.join(__dirname, "hackathonSearchState.json");
 
 //Set the crawler limits
-const targetJobs = 120;
+const targetHackathons = 120;
 const displayCount = 50;
-const maxNewJobsPerRun = 30;
+const maxNewHackathonsPerRun = 30;
 const urlsPerSearch = 20;
 const maxSearchesWithoutProgress = 5;
 const maxRequestAttempts = 3;
@@ -43,56 +43,69 @@ const delayBetweenSearches = 1000;
 
 //Define the search prompts
 const searchPrompts = [
-    "Find active software developer and software engineer job listings in South Africa, including junior, graduate, and entry-level positions. Return direct links to individual job adverts.",
-    "Find active data analyst, data engineer, machine learning, and AI developer jobs in South Africa, including graduate and junior opportunities. Return direct links to individual job adverts.",
-    "Find active cybersecurity analyst, SOC analyst, penetration tester, IT support, and network engineer jobs in South Africa. Include entry-level roles and return direct links to individual job adverts.",
-    "Find active cloud engineer, DevOps engineer, systems administrator, site reliability engineer, and platform engineer jobs in South Africa. Return direct links to individual job adverts.",
-    "Find active frontend developer, backend developer, full-stack developer, mobile app developer, and UI/UX designer jobs in South Africa. Include junior opportunities and return direct links to individual job adverts."
+    "Find active hackathons accepting registrations in South Africa. Include in-person and online events, student hackathons, university competitions, and open innovation challenges. Return direct links to individual hackathon event pages.",
+    "Find upcoming online hackathons open to participants in South Africa, including international virtual hackathons. Return direct links to individual events and registration pages.",
+    "Find upcoming AI, machine learning, data science, and generative AI hackathons that people in South Africa can participate in. Include online events and return direct links to individual events.",
+    "Find upcoming software development, web development, app development, cybersecurity, cloud, and fintech hackathons open to South African participants. Return direct links to individual events.",
+    "Find upcoming university, student, beginner-friendly, startup, sustainability, and innovation hackathons in South Africa. Include registration deadlines and direct event links."
 ];
 
 //Define additional search modifiers to discover different results
 const searchModifiers = [
-    "Prioritize recently posted vacancies.",
-    "Prefer direct employer career pages and individual job adverts.",
-    "Focus on graduate, junior, and entry-level opportunities.",
-    "Search different job boards and company recruitment websites.",
-    "Find additional active vacancies not covered by previous searches."
+    "Prioritize events with registration currently open.",
+    "Prioritize events happening soon and include registration deadlines.",
+    "Search event platforms, university websites, and organizer websites.",
+    "Look for online events open to international participants.",
+    "Find additional events not covered by previous searches."
 ];
 
-//Define the schema for the job posting data
-const jobSchema = {
+//Define the schema for the hackathon data
+const hackathonSchema = {
     type: "object",
     properties: {
-        jobTitle: { type: "string" },
-        company: {
-            type: "string",
-            description: "Name of the company offering the job"
-        },
+        title: { type: "string" },
+        organizer: { type: "string" },
+        description: { type: "string" },
         location: { type: "string" },
-        employmentType: {
+        format: {
             type: "string",
-            description: "e.g. Full-time, Part-time, Contract"
+            description: "Online, In-person, or Hybrid"
         },
-        workArrangement: {
+        startDate: {
             type: "string",
-            description: "Remote, In-person, or Hybrid"
+            description: "Event start date as stated by the source"
         },
-        salary: {
+        endDate: {
             type: "string",
-            description: "Salary or salary range if mentioned, otherwise not specified"
+            description: "Event end date as stated by the source"
         },
-        skillsRequired: {
+        registrationDeadline: {
+            type: "string",
+            description: "Registration deadline as stated by the source"
+        },
+        eligibility: {
+            type: "string",
+            description: "Who can participate, including age, location, student, or experience restrictions"
+        },
+        themes: {
             type: "array",
             items: { type: "string" },
-            description: "List of required or preferred skills, qualifications, and technologies"
+            description: "Topics, tracks, and challenge themes"
         },
-        responsibilities: {
-            type: "array",
-            items: { type: "string" }
+        prizes: {
+            type: "string",
+            description: "Prizes, grants, or other awards if stated"
         },
-        howToApply: { type: "string" }
+        teamRequirements: {
+            type: "string",
+            description: "Team size and collaboration requirements if stated"
+        },
+        registrationUrl: {
+            type: "string",
+            description: "Direct registration URL if available"
+        }
     },
-    required: ["jobTitle", "skillsRequired"]
+    required: ["title"]
 };
 
 //Load the previous prompt index
@@ -117,8 +130,8 @@ async function saveSearchIndex(index) {
     );
 }
 
-//Load the saved jobs from a file
-async function loadJobs(filePath = poolPath) {
+//Load the saved hackathons from a file
+async function loadHackathons(filePath = poolPath) {
     try {
         const data = JSON.parse(await fs.readFile(filePath, "utf8"));
 
@@ -143,9 +156,9 @@ function normalizeUrl(url) {
     }
 }
 
-//Check that a scraped page looks like a real job listing
-function isValidJob(job) {
-    const title = job.jobTitle?.trim();
+//Check that a scraped page looks like a real hackathon listing
+function isValidHackathon(hackathon) {
+    const title = hackathon.title?.trim();
 
     if (!title || title.length < 3) return false;
 
@@ -153,10 +166,8 @@ function isValidJob(job) {
         "not found",
         "page not found",
         "404 error",
-        "jobs at",
         "access denied",
         "page unavailable",
-        "access denied",
         "error 404"
     ];
 
@@ -247,63 +258,67 @@ async function isUrlAlive(url) {
     }
 }
 
-//Check a saved job, skipping jobs that were verified recently
-async function isJobAlive(job) {
+//Check whether an event has already finished or closed registration
+function isHackathonExpired(hackathon) {
+    const dates = [hackathon.endDate, hackathon.registrationDeadline]
+        .map((value) => Date.parse(value ?? ""))
+        .filter((value) => !Number.isNaN(value));
+
+    //Keep events whose dates can't be read
+    if (dates.length === 0) return false;
+
+    //An event is expired once its latest known date has passed
+    return Math.max(...dates) < Date.now();
+}
+
+//Check a saved hackathon, skipping events that were verified recently
+async function isHackathonAlive(hackathon) {
+    if (isHackathonExpired(hackathon)) {
+        return false;
+    }
+
     const recheckAfter = urlRecheckHours * 60 * 60 * 1000;
 
-    if (job.lastCheckedAt && Date.now() - job.lastCheckedAt < recheckAfter) {
+    if (hackathon.lastCheckedAt && Date.now() - hackathon.lastCheckedAt < recheckAfter) {
         return true;
     }
 
-    const alive = await isUrlAlive(job.sourceUrl);
+    const alive = await isUrlAlive(hackathon.sourceUrl);
 
     if (alive) {
-        job.lastCheckedAt = Date.now();
+        hackathon.lastCheckedAt = Date.now();
     }
 
     return alive;
 }
 
-//Build a key to detect likely duplicate job adverts
-function getJobKey(job) {
+//Build a key to detect likely duplicate hackathons
+function getHackathonKey(hackathon) {
     const normalizeText = (value) =>
         (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
-    const title = normalizeText(job.jobTitle);
-    const location = normalizeText(job.location);
+    const title = normalizeText(hackathon.title);
+    const organizer = normalizeText(hackathon.organizer);
+    const startDate = normalizeText(hackathon.startDate);
 
-    //Use the company name when it is available
-    let company = normalizeText(job.company);
-
-    //Use the source website as a fallback when the company isn't known
-    if (!company && job.sourceUrl) {
-        try {
-            company = new URL(job.sourceUrl).hostname
-                .replace(/^www\./, "")
-                .toLowerCase();
-        } catch {
-            company = "";
-        }
-    }
-
-    return `${title}|${company}|${location}`;
+    return `${title}|${organizer}|${startDate}`;
 }
 
-//Save a job collection to a file
-async function saveJobs(jobs, filePath = poolPath) {
+//Save a hackathon collection to a file
+async function saveHackathons(hackathons, filePath = poolPath) {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     await fs.writeFile(
         filePath,
-        JSON.stringify(jobs, null, 2),
+        JSON.stringify(hackathons, null, 2),
         "utf8"
     );
 }
 
-//Pick the least recently shown jobs and remove any whose URL is dead
-async function selectDisplayJobs(jobs) {
-    //Shuffle first so jobs that were never shown are picked in a random order
-    const candidates = shuffle(jobs).sort(
+//Pick the least recently shown hackathons and remove any whose URL is dead or expired
+async function selectDisplayHackathons(hackathons) {
+    //Shuffle first so hackathons that were never shown are picked in a random order
+    const candidates = shuffle(hackathons).sort(
         (a, b) => (a.lastShownAt ?? 0) - (b.lastShownAt ?? 0)
     );
 
@@ -311,7 +326,7 @@ async function selectDisplayJobs(jobs) {
     const deadUrls = new Set();
     let cursor = 0;
 
-    //Keep checking candidates until enough live jobs are found
+    //Keep checking candidates until enough live hackathons are found
     while (selected.length < displayCount && cursor < candidates.length) {
         const chunk = candidates.slice(
             cursor,
@@ -321,99 +336,99 @@ async function selectDisplayJobs(jobs) {
         cursor += chunk.length;
 
         const results = await Promise.all(
-            chunk.map(async (job) => ({
-                job,
-                alive: await isJobAlive(job)
+            chunk.map(async (hackathon) => ({
+                hackathon,
+                alive: await isHackathonAlive(hackathon)
             }))
         );
 
-        for (const { job, alive } of results) {
+        for (const { hackathon, alive } of results) {
             if (alive) {
-                job.lastShownAt = Date.now();
-                selected.push(job);
+                hackathon.lastShownAt = Date.now();
+                selected.push(hackathon);
             } else {
-                deadUrls.add(normalizeUrl(job.sourceUrl));
-                console.log(`Removed dead link: ${job.sourceUrl}`);
+                deadUrls.add(normalizeUrl(hackathon.sourceUrl));
+                console.log(`Removed dead or expired link: ${hackathon.sourceUrl}`);
             }
         }
     }
 
-    //Remove the dead jobs from the saved collection
-    for (let i = jobs.length - 1; i >= 0; i--) {
-        if (deadUrls.has(normalizeUrl(jobs[i].sourceUrl))) {
-            jobs.splice(i, 1);
+    //Remove the dead hackathons from the saved collection
+    for (let i = hackathons.length - 1; i >= 0; i--) {
+        if (deadUrls.has(normalizeUrl(hackathons[i].sourceUrl))) {
+            hackathons.splice(i, 1);
         }
     }
 
     return selected;
 }
 
-//Quickly show a fresh set of jobs without crawling (call this when the page is refreshed)
-export async function refreshJobs() {
-    const jobs = await loadJobs(poolPath);
-    const selected = await selectDisplayJobs(jobs);
+//Quickly show a fresh set of hackathons without crawling (call this when the page is refreshed)
+export async function refreshHackathons() {
+    const hackathons = await loadHackathons(poolPath);
+    const selected = await selectDisplayHackathons(hackathons);
 
-    await saveJobs(jobs, poolPath);
-    await saveJobs(selected, outputPath);
+    await saveHackathons(hackathons, poolPath);
+    await saveHackathons(selected, outputPath);
 
     return selected;
 }
 
-//Main function that discovers, scrapes, and saves jobs
+//Main function that discovers, scrapes, and saves hackathons
 export async function main() {
-    //Load existing jobs before searching, falling back to the old output file
-    let payload = await loadJobs(poolPath);
+    //Load existing hackathons before searching, falling back to the old output file
+    let payload = await loadHackathons(poolPath);
 
     if (payload.length === 0) {
-        payload = await loadJobs(outputPath);
+        payload = await loadHackathons(outputPath);
     }
 
-    //Keep only jobs with valid titles and source URLs
-    const validExistingJobs = payload.filter(
-        (job) => isValidJob(job) && job.sourceUrl
+    //Keep only hackathons with valid titles and source URLs
+    const validExistingHackathons = payload.filter(
+        (hackathon) => isValidHackathon(hackathon) && hackathon.sourceUrl
     );
 
-    //Remove existing duplicate URLs and duplicate job details
+    //Remove existing duplicate URLs and duplicate hackathon details
     const seenUrls = new Set();
-    const seenJobKeys = new Set();
+    const seenHackathonKeys = new Set();
 
-    const jobs = validExistingJobs.filter((job) => {
-        const url = normalizeUrl(job.sourceUrl);
-        const jobKey = getJobKey(job);
+    const hackathons = validExistingHackathons.filter((hackathon) => {
+        const url = normalizeUrl(hackathon.sourceUrl);
+        const key = getHackathonKey(hackathon);
 
         if (
             !url ||
             seenUrls.has(url) ||
-            seenJobKeys.has(jobKey)
+            seenHackathonKeys.has(key)
         ) {
             return false;
         }
 
         seenUrls.add(url);
-        seenJobKeys.add(jobKey);
+        seenHackathonKeys.add(key);
 
         return true;
     });
 
-    //Show a fresh set of live jobs straight away while the crawler tops up the collection
-    const firstSelection = await selectDisplayJobs(jobs);
+    //Show a fresh set of live hackathons straight away while the crawler tops up the collection
+    const firstSelection = await selectDisplayHackathons(hackathons);
 
-    await saveJobs(jobs, poolPath);
-    await saveJobs(firstSelection, outputPath);
+    await saveHackathons(hackathons, poolPath);
+    await saveHackathons(firstSelection, outputPath);
 
-    //Rebuild the duplicate trackers because dead jobs were removed
+    //Rebuild the duplicate trackers because dead hackathons were removed
     seenUrls.clear();
-    seenJobKeys.clear();
+    seenHackathonKeys.clear();
 
-    for (const job of jobs) {
-        seenUrls.add(normalizeUrl(job.sourceUrl));
-        seenJobKeys.add(getJobKey(job));
+    for (const hackathon of hackathons) {
+        seenUrls.add(normalizeUrl(hackathon.sourceUrl));
+        seenHackathonKeys.add(getHackathonKey(hackathon));
     }
 
     //Track URLs already attempted during this run
     const attemptedUrls = new Set(seenUrls);
 
-    //Track how many searches have failed to find new jobs
+    //Track how many searches have failed to find new hackathons
     let searchesWithoutProgress = 0;
     let searchAttempts = 0;
     let addedThisRun = 0;
@@ -422,12 +437,12 @@ export async function main() {
     //Load the saved prompt index
     let searchIndex = await getSearchIndex();
 
-    console.log(`Starting jobs: ${jobs.length}/${targetJobs}`);
+    console.log(`Starting hackathons: ${hackathons.length}/${targetHackathons}`);
 
     //Keep searching until the target is reached or results are exhausted
     while (
-        jobs.length < targetJobs &&
-        addedThisRun < maxNewJobsPerRun &&
+        hackathons.length < targetHackathons &&
+        addedThisRun < maxNewHackathonsPerRun &&
         searchesWithoutProgress < maxSearchesWithoutProgress
     ) {
         //Choose a search modifier and rotate through the categories
@@ -442,21 +457,21 @@ export async function main() {
         console.log(
             `Search ${searchAttempts + 1}: category ${searchIndex + 1}/${searchPrompts.length}`
         );
-        console.log(`Current jobs: ${jobs.length}/${targetJobs}`);
+        console.log(`Current hackathons: ${hackathons.length}/${targetHackathons}`);
 
-        //Search the web for new job URLs
+        //Search the web for new hackathon URLs
         let searchResults;
 
         try {
             searchResults = await retryRequest(
-                "Job search",
+                "Hackathon search",
                 () => app.search(searchQuery, {
                     limit: urlsPerSearch,
                     country: "ZA"
                 })
             );
         } catch (error) {
-            console.error("Job search failed:", error.message);
+            console.error("Hackathon search failed:", error.message);
 
             //Stop requesting the API if it is rate-limiting us
             if (isRateLimitError(error)) {
@@ -507,14 +522,14 @@ export async function main() {
         console.log(`Search results returned: ${results.length}`);
         console.log(`New URLs discovered: ${batchUrls.length}`);
 
-        //Scrape the discovered job URLs several at a time
+        //Scrape the discovered hackathon URLs several at a time
         let addedThisSearch = 0;
 
         for (let i = 0; i < batchUrls.length; i += scrapeConcurrency) {
-            //Stop adding jobs once the target is reached
+            //Stop adding hackathons once the target is reached
             if (
-                jobs.length >= targetJobs ||
-                addedThisRun >= maxNewJobsPerRun ||
+                hackathons.length >= targetHackathons ||
+                addedThisRun >= maxNewHackathonsPerRun ||
                 stopForRateLimit
             ) {
                 break;
@@ -532,75 +547,83 @@ export async function main() {
                     console.log(`Scraping: ${url}`);
 
                     const result = await retryRequest(
-                        "Job scrape",
+                        "Hackathon scrape",
                         () => app.scrape(url, {
                             formats: [
                                 "markdown",
-                                { type: "json", schema: jobSchema }
+                                { type: "json", schema: hackathonSchema }
                             ]
                         })
                     );
 
-                    //Extract the structured job details
+                    //Extract the structured hackathon details
                     const structured = result.json ?? {};
 
-                    //Skip pages that aren't valid job listings
-                    if (!isValidJob(structured)) {
-                        console.log("Skipped invalid or closed listing");
+                    //Skip pages that aren't valid hackathon listings
+                    if (!isValidHackathon(structured)) {
+                        console.log("Skipped invalid listing");
                         return;
                     }
 
-                    //Build the saved job object
-                    const job = {
+                    //Build the saved hackathon object
+                    const hackathon = {
                         scrapedAt: new Date().toISOString(),
                         sourceUrl: url,
                         pageTitle: result.metadata?.title ?? "",
-                        jobTitle: structured.jobTitle.trim(),
-                        company: structured.company?.trim() ?? "",
+                        title: structured.title.trim(),
+                        organizer: structured.organizer?.trim() ?? "",
+                        description: structured.description ?? "",
                         location: structured.location ?? "",
-                        employmentType: structured.employmentType ?? "",
-                        workArrangement: structured.workArrangement ?? "",
-                        salary: structured.salary ?? "",
-                        skillsRequired: Array.isArray(structured.skillsRequired)
-                            ? structured.skillsRequired
+                        format: structured.format ?? "",
+                        startDate: structured.startDate ?? "",
+                        endDate: structured.endDate ?? "",
+                        registrationDeadline: structured.registrationDeadline ?? "",
+                        eligibility: structured.eligibility ?? "",
+                        themes: Array.isArray(structured.themes)
+                            ? structured.themes
                             : [],
-                        responsibilities: Array.isArray(structured.responsibilities)
-                            ? structured.responsibilities
-                            : [],
-                        howToApply: structured.howToApply ?? "",
+                        prizes: structured.prizes ?? "",
+                        teamRequirements: structured.teamRequirements ?? "",
+                        registrationUrl: structured.registrationUrl ?? "",
                         rawMarkdown: result.markdown ?? "",
                         lastCheckedAt: Date.now(),
                         lastShownAt: 0
                     };
 
-                    //Check URL and job details for duplicates
-                    const jobKey = getJobKey(job);
+                    //Skip events that have already finished
+                    if (isHackathonExpired(hackathon)) {
+                        console.log(`Skipped expired hackathon: ${hackathon.title}`);
+                        return;
+                    }
+
+                    //Check URL and hackathon details for duplicates
+                    const key = getHackathonKey(hackathon);
 
                     if (
                         seenUrls.has(normalized) ||
-                        seenJobKeys.has(jobKey)
+                        seenHackathonKeys.has(key)
                     ) {
-                        console.log(`Skipped duplicate job: ${job.jobTitle}`);
+                        console.log(`Skipped duplicate hackathon: ${hackathon.title}`);
                         return;
                     }
 
-                    //Skip the job if another scrape already filled the target
+                    //Skip the hackathon if another scrape already filled the target
                     if (
-                        jobs.length >= targetJobs ||
-                        addedThisRun >= maxNewJobsPerRun
+                        hackathons.length >= targetHackathons ||
+                        addedThisRun >= maxNewHackathonsPerRun
                     ) {
                         return;
                     }
 
-                    //Add the new unique job to the collection
+                    //Add the new unique hackathon to the collection
                     seenUrls.add(normalized);
-                    seenJobKeys.add(jobKey);
-                    jobs.push(job);
+                    seenHackathonKeys.add(key);
+                    hackathons.push(hackathon);
                     addedThisSearch++;
                     addedThisRun++;
 
-                    console.log(`Added: ${job.jobTitle}`);
-                    console.log(`Progress: ${jobs.length}/${targetJobs}`);
+                    console.log(`Added: ${hackathon.title}`);
+                    console.log(`Progress: ${hackathons.length}/${targetHackathons}`);
                 } catch (error) {
                     console.error(`Failed to scrape ${url}:`, error.message);
 
@@ -612,21 +635,21 @@ export async function main() {
             }));
 
             //Save progress after each group of scrapes
-            await saveJobs(jobs, poolPath);
+            await saveHackathons(hackathons, poolPath);
 
             //Pause between scrape groups to reduce request pressure
             await sleep(delayBetweenScrapes);
         }
 
-        //Save the updated job collection after processing the batch
-        await saveJobs(jobs, poolPath);
+        //Save the updated hackathon collection after processing the batch
+        await saveHackathons(hackathons, poolPath);
 
-        //Track whether this search found any new jobs
+        //Track whether this search found any new hackathons
         if (addedThisSearch === 0) {
             searchesWithoutProgress++;
 
             console.log(
-                `No new jobs found (${searchesWithoutProgress}/${maxSearchesWithoutProgress} unsuccessful searches)`
+                `No new hackathons found (${searchesWithoutProgress}/${maxSearchesWithoutProgress} unsuccessful searches)`
             );
         } else {
             searchesWithoutProgress = 0;
@@ -638,7 +661,7 @@ export async function main() {
         await saveSearchIndex(searchIndex);
 
         //Stop if the target has been reached
-        if (jobs.length >= targetJobs) {
+        if (hackathons.length >= targetHackathons) {
             break;
         }
 
@@ -651,29 +674,29 @@ export async function main() {
         await sleep(delayBetweenSearches);
     }
 
-    //Save the final job collection and the jobs shown on the page
-    const finalSelection = await selectDisplayJobs(jobs);
+    //Save the final hackathon collection and the hackathons shown on the page
+    const finalSelection = await selectDisplayHackathons(hackathons);
 
-    await saveJobs(jobs, poolPath);
-    await saveJobs(finalSelection, outputPath);
+    await saveHackathons(hackathons, poolPath);
+    await saveHackathons(finalSelection, outputPath);
 
     console.log("");
-    console.log(`Finished with ${jobs.length} unique jobs (${finalSelection.length} shown).`);
+    console.log(`Finished with ${hackathons.length} unique hackathons (${finalSelection.length} shown).`);
 
-    if (jobs.length >= targetJobs) {
+    if (hackathons.length >= targetHackathons) {
         console.log("Target reached.");
     } else if (stopForRateLimit) {
         console.warn(
             "Stopped because Firecrawl rate-limited the crawler. Saved progress is preserved."
         );
-    } else if (addedThisRun >= maxNewJobsPerRun) {
-        console.log("Run limit reached. More jobs will be added on the next run.");
+    } else if (addedThisRun >= maxNewHackathonsPerRun) {
+        console.log("Run limit reached. More hackathons will be added on the next run.");
     } else {
         console.warn(
-            "Stopped because repeated searches produced no new unique jobs."
+            "Stopped because repeated searches produced no new unique hackathons."
         );
         console.warn(
-            "Try again later or expand the search sources to find more listings."
+            "Try again later or expand the search sources to find more events."
         );
     }
 }
@@ -681,6 +704,6 @@ export async function main() {
 //Run the crawler when this file is executed directly
 if (path.resolve(process.argv[1] ?? "") === __filename) {
     main().catch((error) => {
-        console.error("Crawler failed:", error.message);
+        console.error("Hackathon crawler failed:", error.message);
     });
 }
