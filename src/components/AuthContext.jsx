@@ -1,29 +1,42 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { authenticatedRequest, logoutSession, parseResponse } from './authClient.js'
+import { resolveOrganization, savedOrganizationId, saveOrganizationId } from './organizationSelection.js'
 
 const AuthContext = createContext(null)
-
-async function parseResponse(response) {
-  if (response.status === 204) return null
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const error = new Error(data.error || `Request failed (${response.status})`)
-    error.status = response.status
-    throw error
-  }
-  return data
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [csrfToken, setCsrfToken] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [mailNotice, setMailNotice] = useState('')
+  const [mailTransport, setMailTransport] = useState('smtp')
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState(null)
 
   const applyAuth = useCallback((data) => {
     setUser(data?.user ?? null)
     setCsrfToken(data?.csrfToken ?? null)
+    if (data?.mailTransport) setMailTransport(data.mailTransport)
+    setMailNotice(data?.verificationEmailSent === false ? 'Your account was created, but the verification email could not be sent. Please try again below.' : '')
+    setSelectedOrganizationId(data?.user ? savedOrganizationId(data.user.id) : null)
     return data?.user ?? null
   }, [])
+
+  const refreshAuth = useCallback(async (organizationId) => {
+    const data = await fetch('/api/auth/me', { cache: 'no-store' }).then(parseResponse)
+    if (data.user?.organizations.some(({ id }) => id === organizationId)) {
+      saveOrganizationId(data.user.id, organizationId)
+    }
+    return applyAuth(data)
+  }, [applyAuth])
+
+  const selectOrganization = useCallback((id) => {
+    if (!user?.organizations.some((organization) => organization.id === id)) return
+    setSelectedOrganizationId(id)
+    saveOrganizationId(user.id, id)
+  }, [user])
+
+  const activeOrganization = resolveOrganization(user, selectedOrganizationId)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -60,13 +73,7 @@ export function AuthProvider({ children }) {
   )
 
   const logout = useCallback(async () => {
-    if (csrfToken) {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'x-csrf-token': csrfToken },
-      }).then(parseResponse)
-    }
-    applyAuth(null)
+    await logoutSession(csrfToken, () => applyAuth(null))
   }, [applyAuth, csrfToken])
 
   const apiFetch = useCallback(async (path, options = {}) => {
@@ -76,11 +83,11 @@ export function AuthProvider({ children }) {
       headers.set('x-csrf-token', csrfToken)
     }
     if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json')
-    return fetch(path, { ...options, headers }).then(parseResponse)
-  }, [csrfToken])
+    return authenticatedRequest(path, { ...options, headers }, () => applyAuth(null))
+  }, [csrfToken, applyAuth])
 
-  const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch }), [
-    user, loading, login, signup, logout, apiFetch,
+  const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch, refreshAuth, activeOrganization, selectOrganization, mailNotice, mailTransport }), [
+    user, loading, login, signup, logout, apiFetch, refreshAuth, activeOrganization, selectOrganization, mailNotice, mailTransport,
   ])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -92,13 +99,16 @@ export function useAuth() {
 }
 
 function AuthGate({ capability, children }) {
-  const { user, loading } = useAuth()
+  const { user, loading, activeOrganization } = useAuth()
   const location = useLocation()
   if (loading) {
     return <main id="main-content" className="product-page"><div className="page-container"><p>Checking account access…</p></div></main>
   }
   if (!user) {
-    return <Navigate to="/auth?mode=login" replace state={{ from: `${location.pathname}${location.search}` }} />
+    return <Navigate to="/auth?mode=login" replace state={{ from: `${location.pathname}${location.search}${location.hash}` }} />
+  }
+  if (capability && !user.emailVerified) {
+    return <Navigate to="/account" replace state={{ from: `${location.pathname}${location.search}${location.hash}` }} />
   }
   const allowed = capability === 'candidate'
     ? user.isCandidate
@@ -106,7 +116,7 @@ function AuthGate({ capability, children }) {
       ? user.organizations.length > 0
       : true
   if (!allowed) return <Navigate to="/forbidden" replace />
-  return children
+  return <Fragment key={capability === 'employer' ? activeOrganization?.id : user.id}>{children}</Fragment>
 }
 
 export function RequireAuth({ children }) {

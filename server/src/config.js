@@ -1,10 +1,22 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import dotenv from 'dotenv'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
 export const SERVER_ROOT = path.resolve(here, '..')
 export const REPO_ROOT = path.resolve(SERVER_ROOT, '..')
+
+dotenv.config({ path: path.join(SERVER_ROOT, '.env'), quiet: true })
+
+const mailTransport =
+  process.env.MORROW_MAIL_TRANSPORT || (process.env.NODE_ENV === 'production' ? 'smtp' : 'console')
+if (!['console', 'smtp'].includes(mailTransport)) {
+  throw new Error('MORROW_MAIL_TRANSPORT must be console or smtp')
+}
+if (process.env.NODE_ENV === 'production' && mailTransport === 'console') {
+  throw new Error('console email is unavailable in production; use SMTP')
+}
 
 function num(value, fallback) {
   const parsed = Number(value)
@@ -75,6 +87,21 @@ export const config = {
     secureCookies: process.env.NODE_ENV === 'production',
     loginWindowMinutes: num(process.env.MORROW_LOGIN_WINDOW_MINUTES, 15),
     loginMaxAttempts: num(process.env.MORROW_LOGIN_MAX_ATTEMPTS, 8),
+    loginMaxIpAttempts: num(process.env.MORROW_LOGIN_MAX_IP_ATTEMPTS, 40),
+    approvedEmployerIds: (process.env.MORROW_APPROVED_EMPLOYER_IDS || '')
+      .split(',')
+      .map((id) => id.trim().toLowerCase())
+      .filter(Boolean),
+  },
+
+  mail: {
+    transport: mailTransport,
+    appUrl: process.env.MORROW_APP_URL || 'http://127.0.0.1:5173',
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: num(process.env.SMTP_PORT, 587),
+    user: process.env.SMTP_USER || '',
+    password: process.env.SMTP_PASS || '',
+    from: process.env.MAIL_FROM || '',
   },
 
   schedule: {
