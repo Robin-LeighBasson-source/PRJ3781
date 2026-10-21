@@ -33,7 +33,7 @@ npm run crawl      # populate the database (first run takes a few minutes)
 Create an account from the **Sign up** tab on `/auth`. Choose **Candidate** to
 get a candidate workspace, or **Employer** to create a company organization that
 you own. Accounts, sessions, organizations, job drafts and resumes are stored in
-MongoDB (`MONGODB_URI` in `server/.env`). Passwords are stored as scrypt hashes,
+MongoDB (`MONGODB_URI` in the repository-root `.env`). Passwords are stored as scrypt hashes,
 and the browser receives an opaque, `HttpOnly` session cookie.
 
 Candidates upload a resume (PDF, DOC or DOCX, up to 10MB, stored in GridFS) and
@@ -78,6 +78,57 @@ docker compose --profile preview up --build
 Copy `.env.example` to `.env` to override the crawler settings; `docker compose`
 picks it up automatically. Clear everything, volumes included, with
 `docker compose down -v`.
+
+## Deploy to a VPS with a domain and HTTPS
+
+`docker-compose.prod.yml` runs the production stack: the API built without
+`--watch`, the static bundle behind nginx, and Caddy as the only public service.
+Caddy obtains and renews the Let's Encrypt certificate for `DOMAIN` automatically.
+
+1. Point an `A` record for the domain (and `AAAA` if the VPS has IPv6) at the VPS
+   public IP. Wait for DNS to resolve before starting Caddy.
+2. In MongoDB Atlas, add the VPS public IP under **Network Access** (or
+   `0.0.0.0/0` for a short-lived demo). The API cannot connect otherwise.
+3. On the VPS, install Docker Engine with the Compose plugin, then allow ports
+   22, 80 and 443 through the firewall. Ports 80/443 must not be used by a host
+   nginx/apache.
+4. Clone the repository and configure the root `.env`:
+
+   ```bash
+   git clone <repository-url> morrow
+   cd morrow
+   cp .env.example .env
+   ```
+
+   Required values:
+
+   ```dotenv
+   MONGODB_URI=mongodb+srv://...
+   DOMAIN=morrow.example.com
+   ACME_EMAIL=you@example.com
+   ```
+
+5. Build and start:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d --build
+   docker compose -f docker-compose.prod.yml logs -f caddy
+   ```
+
+   The first certificate request takes a few seconds. Then open
+   `https://<DOMAIN>`.
+
+To update after a `git pull`:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+The SQLite catalogue and HTTP cache live in the `api-data` and `api-cache`
+volumes; the certificate lives in `caddy-data`, so renewals and restarts do not
+repeat the ACME challenge. Accounts and resumes are in MongoDB Atlas, not on the
+VPS. If the domain is behind Cloudflare, set the DNS record to **DNS only** for
+the first certificate issuance.
 
 ## Main routes
 

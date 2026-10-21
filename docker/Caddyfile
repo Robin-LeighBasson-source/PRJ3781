@@ -1,0 +1,31 @@
+# Caddy obtains and renews the Let's Encrypt certificate automatically for
+# $DOMAIN, as long as DNS points at this VPS and ports 80/443 are reachable.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The API is reached directly, not through nginx, so Caddy's X-Forwarded-For
+	# is the only proxy hop the app has to trust (see `trust proxy` in app.js).
+	handle /api/* {
+		reverse_proxy api:8787
+	}
+
+	# Everything else is the built React bundle served by nginx.
+	handle {
+		reverse_proxy web:80
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

@@ -13,6 +13,10 @@ import { portfolioRouter } from './routes/portfolio.js'
 export function createApp() {
   const app = express()
   app.disable('x-powered-by')
+  // In production the API is only reachable through Caddy, so trust exactly one
+  // proxy hop. This keeps req.ip (used by the login rate limiter) as the client
+  // address instead of the proxy container's.
+  if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1)
   app.use(cors({
     credentials: true,
     origin(origin, callback) {

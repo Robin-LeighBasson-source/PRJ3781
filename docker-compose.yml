@@ -12,6 +12,10 @@ services:
     command: npm run dev:api
     environment:
       PORT: '8787'
+      # Accounts, resumes and product requests live in MongoDB. The value comes
+      # from the repo-root .env (compose interpolates it there); .env itself is
+      # in .dockerignore, so it has to be passed explicitly.
+      MONGODB_URI: ${MONGODB_URI:?set MONGODB_URI in .env before starting the api service}
       # Kept off the bind-mounted source tree and on named volumes, so the
       # database and HTTP cache survive rebuilds without landing in the repo.
       MORROW_DB_PATH: /app/server/data/morrow.db
@@ -64,6 +68,7 @@ services:
       - ./public:/app/public
       - ./index.html:/app/index.html
       - ./vite.config.js:/app/vite.config.js
+      - ./server/src:/app/server/src
     depends_on:
       - api
 

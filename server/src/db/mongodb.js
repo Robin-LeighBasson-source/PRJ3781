@@ -13,8 +13,10 @@ import User from "../models/User.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Explicitly load server/.env
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+// Load the repository-root .env, which is where MONGODB_URI lives both for local
+// runs and for the copy that docker-compose reads. In Docker the value arrives as
+// a real environment variable, so a missing file here is harmless.
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 /**
  * Connect to MongoDB and make each collection's indexes match its schema. Syncing

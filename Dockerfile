@@ -43,6 +43,27 @@ USER node
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ---------------------------------------------------------------------------
+# api - the crawler service and JSON API for production. Source is copied in
+# (no bind mounts, no --watch) and runs as the unprivileged node user.
+# ---------------------------------------------------------------------------
+FROM ${NODE_IMAGE} AS api
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node server/package.json ./server/
+COPY --chown=node:node server/src ./server/src
+# The crawler exports its fallback snapshot here; serving the API does not need it.
+COPY --chown=node:node public/data ./public/data
+
+RUN mkdir -p /app/server/data /app/server/.cache \
+ && chown -R node:node /app/server
+
+USER node
+EXPOSE 8787
+CMD ["npm", "run", "start:api"]
+
+# ---------------------------------------------------------------------------
 # build - the static frontend bundle.
 # ---------------------------------------------------------------------------
 FROM deps AS build
