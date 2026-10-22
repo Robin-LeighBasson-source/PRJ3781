@@ -9,6 +9,8 @@ name: morrow-prod
 services:
   api:
     image: morrow-api:prod
+    # These images are built on this machine, never pulled from a registry.
+    pull_policy: build
     build:
       context: .
       target: api
@@ -19,8 +21,9 @@ services:
       MONGODB_URI: ${MONGODB_URI:?set MONGODB_URI in .env before starting the stack}
       MORROW_DB_PATH: /app/server/data/morrow.db
       MORROW_CACHE_DIR: /app/server/.cache/http
-      # Same-origin requests through Caddy carry this Origin on writes.
-      MORROW_CORS_ORIGINS: https://${DOMAIN:?set DOMAIN in .env before starting the stack}
+      # Same-origin requests through Caddy carry this Origin on writes. Defaults
+      # to https://DOMAIN; override in .env only to add extra origins (e.g. www).
+      MORROW_CORS_ORIGINS: ${MORROW_CORS_ORIGINS:-https://${DOMAIN:?set DOMAIN in .env before starting the stack}}
       MORROW_SESSION_TTL_HOURS: ${MORROW_SESSION_TTL_HOURS:-8}
       MORROW_LOGIN_WINDOW_MINUTES: ${MORROW_LOGIN_WINDOW_MINUTES:-15}
       MORROW_LOGIN_MAX_ATTEMPTS: ${MORROW_LOGIN_MAX_ATTEMPTS:-8}
@@ -46,6 +49,7 @@ services:
 
   web:
     image: morrow-web:prod
+    pull_policy: build
     build:
       context: .
       target: web
