@@ -22,11 +22,23 @@ export function JobsPage({ preset = 'All' }) {
   const [mode, setMode] = useState('All setups')
   const [sort, setSort] = useState('Most recent')
   const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const toast = useToast()
 
   //Load jobs posted on Morrow and the crawled listings from jobs.json
   useEffect(() => {
-    getAllJobs().then(setJobs)
+    getAllJobs()
+      .then((data) => {
+        setJobs(data)
+      })
+      .catch((err) => {
+        console.error('Failed to load jobs:', err)
+        setError('Could not load jobs. Please try again later.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [])
 
   const results = useMemo(() => {
@@ -120,7 +132,15 @@ export function JobsPage({ preset = 'All' }) {
               </select>
             </label>
           </div>
-          <JobList items={results} />
+          {loading && <p>Loading jobs...</p>}
+
+          {!loading && error && (
+            <div className="empty-state">
+              <p>{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && <JobList items={results} />}
         </section>
       </div>
     </main>
@@ -129,10 +149,22 @@ export function JobsPage({ preset = 'All' }) {
 
 export function RecommendedJobsPage() {
   const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   //Load jobs posted on Morrow and the crawled listings from jobs.json
   useEffect(() => {
-    getAllJobs().then(setJobs)
+    getAllJobs()
+      .then((data) => {
+        setJobs(data)
+      })
+      .catch((err) => {
+        console.error('Failed to load jobs:', err)
+        setError('Could not load jobs. Please try again later.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [])
 
   return (
@@ -178,7 +210,15 @@ export function RecommendedJobsPage() {
               All active jobs <ArrowRight size={17} />
             </Link>
           </div>
-          <JobList items={jobs.slice(0, 5)} showMatch />
+          {loading && <p>Loading jobs...</p>}
+
+          {!loading && error && (
+            <div className="empty-state">
+              <p>{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && <JobList items={jobs.slice(0, 5)} showMatch />}
         </section>
       </div>
     </main>
