@@ -9,7 +9,8 @@
   ],
   "type": "module",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
     "dev:api": "npm --workspace @morrow/server run dev",
@@ -18,6 +19,7 @@
     "crawl:export": "npm --workspace @morrow/server run export",
     "crawl:jobs": "npm --workspace @morrow/server run crawl:jobs",
     "crawl:hackathons": "npm --workspace @morrow/server run crawl:hackathons",
+    "crawl:courses": "npm --workspace @morrow/server run crawl:courses",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test:server": "npm --workspace @morrow/server run test"

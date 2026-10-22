@@ -37,10 +37,13 @@ Sign-up, resumes, jobs, projects and portfolios need the API and a MongoDB
 database. Set `MONGODB_URI` in `server/.env`, then start the API in a second
 terminal with `npm run dev:api`.
 
-`npm run dev` first runs the job crawler (`npm run crawl:jobs`), which needs a
-`FIRECRAWL_API_KEY` in `jobCrawler.env` at the repository root. Refresh the other
-Firecrawl listings with `npm run crawl:hackathons`, or
-`node server/src/crawl/courseCrawler.js` for courses.
+`npm run dev` starts Vite and then, in the background, runs the job, hackathon and
+course crawlers one after another. They need a `FIRECRAWL_API_KEY` in
+`jobCrawler.env` at the repository root (see `jobCrawler.env.example`) and use
+Firecrawl credits on every run; without a key they are skipped. Each crawler saves
+to `public/data/*.json` as it goes, so refresh the page to see new listings. Use
+`npm run dev:web` to start Vite without crawling, or run one crawler on its own with
+`npm run crawl:jobs`, `npm run crawl:hackathons` or `npm run crawl:courses`.
 
 Format the repository or check formatting without writing changes:
 

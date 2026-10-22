@@ -401,6 +401,9 @@ export async function main() {
     await saveJobs(jobs, poolPath);
     await saveJobs(firstSelection, outputPath);
 
+    //Remember where this run's new jobs start, so they can be shown as they are found
+    const shownCount = jobs.length;
+
     //Rebuild the duplicate trackers because dead jobs were removed
     seenUrls.clear();
     seenJobKeys.clear();
@@ -613,6 +616,14 @@ export async function main() {
 
             //Save progress after each group of scrapes
             await saveJobs(jobs, poolPath);
+
+            //Show the new jobs on the page straight away, so they are kept if the run is stopped early
+            if (addedThisRun > 0) {
+                await saveJobs(
+                    [...jobs.slice(shownCount), ...firstSelection].slice(0, displayCount),
+                    outputPath
+                );
+            }
 
             //Pause between scrape groups to reduce request pressure
             await sleep(delayBetweenScrapes);
