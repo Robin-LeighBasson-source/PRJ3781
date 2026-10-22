@@ -15,6 +15,7 @@ import {
   listVisibleCandidates,
   openResumeFileStream,
 } from '../db/resumeRepository.js'
+import { publishedPortfolioSlugs } from '../db/portfolioRepository.js'
 import { missingForPublish, validateJobFields } from './jobs.js'
 import { sendResumeFile } from './resume.js'
 
@@ -25,13 +26,15 @@ export const workspaceRouter = express.Router()
 const WORK_SETUPS = ['Flexible', 'On-site', 'Hybrid', 'Remote']
 const JOB_EDITORS = ['owner', 'recruiter']
 
-function candidateResponse(resume) {
+function candidateResponse(resume, portfolioSlugs = new Map()) {
   return {
     id: String(resume.user._id),
     displayName: resume.user.name,
     email: resume.user.email,
     profile: resume.profile ?? {},
     hasResumeFile: Boolean(resume.file?.fileId),
+    // Only set when the candidate has published their portfolio.
+    portfolioSlug: portfolioSlugs.get(String(resume.user._id)) ?? null,
     updatedAt: resume.updatedAt,
   }
 }
@@ -99,7 +102,11 @@ workspaceRouter.get(
     const workSetup = WORK_SETUPS.includes(req.query.workSetup) ? req.query.workSetup : ''
     try {
       const candidates = await listVisibleCandidates({ query, workSetup })
-      res.json({ organizationId: req.params.organizationId, items: candidates.map(candidateResponse) })
+      const portfolioSlugs = await publishedPortfolioSlugs(candidates.map((resume) => resume.user._id))
+      res.json({
+        organizationId: req.params.organizationId,
+        items: candidates.map((resume) => candidateResponse(resume, portfolioSlugs)),
+      })
     } catch (error) {
       next(error)
     }

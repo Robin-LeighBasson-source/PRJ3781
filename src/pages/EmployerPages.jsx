@@ -5,10 +5,12 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   Download,
+  ExternalLink,
   Layers3,
   Mail,
   Search,
   ShieldCheck,
+  UserRound,
   Sparkles,
   Users,
 } from 'lucide-react'
@@ -16,6 +18,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { PageIntro, PreviewNotice, SkillTags, StatusPill } from '../components/ProductUI.jsx'
 import { useToast } from '../components/ToastContext.jsx'
 import { useAuth } from '../components/AuthContext.jsx'
+import { PortfolioView } from './PortfolioPages.jsx'
 
 const employerServices = [
   {
@@ -112,12 +115,63 @@ function rolesFor(profile) {
     .slice(0, 5)
 }
 
+// A candidate's published portfolio, shown inside their row on Browse candidates.
+function CandidatePortfolio({ candidate }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(Boolean(candidate.portfolioSlug))
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!candidate.portfolioSlug) return undefined
+    let active = true
+    fetch(`/api/portfolios/${encodeURIComponent(candidate.portfolioSlug)}`)
+      .then((response) => {
+        if (!response.ok) throw new Error('not available')
+        return response.json()
+      })
+      .then((body) => { if (active) setData(body) })
+      .catch(() => { if (active) setError('This portfolio could not be loaded. Please try again later.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [candidate.portfolioSlug])
+
+  if (!candidate.portfolioSlug) {
+    return (
+      <div className="candidate-portfolio candidate-portfolio--empty">
+        <p>{candidate.displayName} has not published a portfolio yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="candidate-portfolio">
+      {loading && <p>Loading portfolio...</p>}
+      {!loading && error && (
+        <div className="empty-state">
+          <p>{error}</p>
+        </div>
+      )}
+      {!loading && !error && data && (
+        <>
+          <a className="text-action" href={`/portfolio/${candidate.portfolioSlug}`} target="_blank" rel="noopener noreferrer">
+            Open full portfolio <ExternalLink size={16} aria-hidden="true" />
+          </a>
+          <section className="portfolio-preview" aria-label={`${data.displayName}'s portfolio`}>
+            <PortfolioView portfolio={data} education={data.education} morrowWork={data.morrowWork} />
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function BrowseCandidatesPage() {
   const [query, setQuery] = useState('')
   const [workSetup, setWorkSetup] = useState('All setups')
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [openCandidate, setOpenCandidate] = useState(null)
   const { user, apiFetch } = useAuth()
   const organization = user.organizations[0]
   const candidatesPath = `/api/organizations/${organization.id}/candidates`
@@ -205,13 +259,25 @@ export function BrowseCandidatesPage() {
           {candidates.map((candidate) => {
             const { profile } = candidate
             const roles = rolesFor(profile)
+            const isOpen = openCandidate === candidate.id
+            const togglePortfolio = () => setOpenCandidate(isOpen ? null : candidate.id)
             return (
               <article className="candidate-row" key={candidate.id}>
                 <div className="candidate-avatar" aria-hidden="true">
                   {initialsFor(candidate.displayName)}
                 </div>
                 <div className="candidate-row__identity">
-                  <h3>{candidate.displayName}</h3>
+                  <h3>
+                    <button
+                      className="candidate-name-button"
+                      type="button"
+                      aria-expanded={isOpen}
+                      aria-controls={`candidate-portfolio-${candidate.id}`}
+                      onClick={togglePortfolio}
+                    >
+                      {candidate.displayName}
+                    </button>
+                  </h3>
                   <p>{[profile.fieldOfStudy, profile.studyLevel].filter(Boolean).join(' · ') || 'Field of study not added'}</p>
                   <span>{profile.institution || 'Institution not added'}</span>
                 </div>
@@ -227,6 +293,9 @@ export function BrowseCandidatesPage() {
                   {roles.length > 0 && <SkillTags skills={roles} />}
                 </div>
                 <div className="candidate-row__actions">
+                  <button className="text-action" type="button" aria-expanded={isOpen} onClick={togglePortfolio}>
+                    <UserRound size={16} aria-hidden="true" /> {isOpen ? 'Hide portfolio' : 'Portfolio'}
+                  </button>
                   {candidate.hasResumeFile && (
                     <a className="text-action" href={`${candidatesPath}/${candidate.id}/resume`}>
                       Resume <Download size={16} aria-hidden="true" />
@@ -236,6 +305,11 @@ export function BrowseCandidatesPage() {
                     Email <Mail size={16} aria-hidden="true" />
                   </a>
                 </div>
+                {isOpen && (
+                  <div className="candidate-row__portfolio" id={`candidate-portfolio-${candidate.id}`}>
+                    <CandidatePortfolio candidate={candidate} />
+                  </div>
+                )}
               </article>
             )
           })}

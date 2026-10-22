@@ -3982,3 +3982,39 @@ p {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Candidate portfolio on Browse candidates */
+.candidate-name-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.candidate-name-button:hover,
+.candidate-name-button[aria-expanded='true'] {
+  text-decoration: underline;
+}
+
+.candidate-row__portfolio {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.candidate-portfolio {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.candidate-portfolio > .text-action {
+  justify-self: start;
+}
+
+.candidate-portfolio--empty {
+  padding: var(--space-md);
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
