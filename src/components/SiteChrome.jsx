@@ -229,7 +229,7 @@ function Header() {
     <>
       <div className="preview-bar">
         <div className="preview-bar__inner">
-          <p>Frontend project preview - sample data only.</p>
+          <p>A student and graduate opportunity network.</p>
           <Link to="/jobs">
             Browse active jobs <ArrowRight size={14} aria-hidden="true" />
           </Link>

@@ -56,9 +56,6 @@ export function EmployerHubPage() {
       </PageIntro>
 
       <div className="page-container">
-        <PreviewNotice>
-          Employer tools, analytics, events, and candidate profiles are interface previews only.
-        </PreviewNotice>
         <section className="hiring-services" aria-labelledby="hiring-services-title">
           <div className="hiring-services__intro">
             <p className="eyebrow">Hiring workspace</p>

@@ -98,7 +98,6 @@ export default function HomePage() {
             life.
           </p>
           <HeroSearch />
-          <p className="hero__fine-print">Frontend preview - sample listings only</p>
         </div>
         <div className="hero__media">
           <img
@@ -128,7 +127,7 @@ export default function HomePage() {
       <section className="opportunities" aria-labelledby="opportunities-title">
         <div className="section-heading">
           <div>
-            <p>Sample listings</p>
+            <p>Latest listings</p>
             <h2 id="opportunities-title">Fresh opportunities</h2>
           </div>
           <Link className="inline-link" to="/jobs">
