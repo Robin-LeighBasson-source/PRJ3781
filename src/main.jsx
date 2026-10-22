@@ -6,15 +6,8 @@ import './styles.css'
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 
-const loadingStartedAt = Date.now()
-
 function removeLoadingOverlay() {
-  const elapsed = Date.now() - loadingStartedAt
-  const remaining = Math.max(0, 2000 - elapsed)
-
-  setTimeout(() => {
-    document.getElementById('initial-loading-overlay')?.remove()
-  }, remaining)
+  document.getElementById('initial-loading-overlay')?.remove()
 }
 
 root.render(
