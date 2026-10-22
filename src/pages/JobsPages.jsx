@@ -218,7 +218,7 @@ export function RecommendedJobsPage() {
             </div>
           )}
 
-          {!loading && !error && <JobList items={jobs.slice(0, 5)} showMatch />}
+          {!loading && !error && <JobList items={jobs.slice(0, 5)} />}
         </section>
       </div>
     </main>
