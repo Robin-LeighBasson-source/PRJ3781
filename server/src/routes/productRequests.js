@@ -6,7 +6,7 @@ import {
   EMPLOYER_ROLES,
   membershipFor,
 } from "../auth/policies.js";
-import { usersWithResumeFiles } from "../db/jobRepository.js";
+import { applicantDetails } from "../db/applicantRepository.js";
 import {
   addApplicant,
   createProductRequest,
@@ -86,7 +86,7 @@ function applicationsOpen(request) {
 
 // What a viewer may see depends on who they are: the posting organization sees
 // its applicants; everyone else only sees how many there are.
-function toResponse(request, user, resumeOwners = new Set()) {
+function toResponse(request, user, details = new Map()) {
   const organizationId = String(request.organization);
   const ownApplication = user
     ? (request.applicants ?? []).find((a) => String(a.user?._id ?? a.user) === user.id)
@@ -123,7 +123,9 @@ function toResponse(request, user, resumeOwners = new Set()) {
         email: applicant.user.email,
         appliedAt: applicant.appliedAt,
         status: applicant.status ?? "applied",
-        hasResumeFile: resumeOwners.has(String(applicant.user._id)),
+        hasResumeFile: details.get(String(applicant.user._id))?.hasResumeFile ?? false,
+        profile: details.get(String(applicant.user._id))?.profile ?? {},
+        portfolioSlug: details.get(String(applicant.user._id))?.portfolioSlug ?? null,
       }));
   }
   return response;
@@ -137,10 +139,10 @@ async function respondWithRequest(res, id, user, status = 200) {
   const withApplicants = Boolean(user?.organizations?.length);
   const request = await getProductRequestById(id, { withApplicants });
   if (!request) return res.status(404).json({ error: "product request not found" });
-  const resumeOwners = canViewProductApplicants(user, String(request.organization))
-    ? await usersWithResumeFiles(applicantIds([request]))
-    : new Set();
-  return res.status(status).json(toResponse(request, user, resumeOwners));
+  const details = canViewProductApplicants(user, String(request.organization))
+    ? await applicantDetails(applicantIds([request]))
+    : new Map();
+  return res.status(status).json(toResponse(request, user, details));
 }
 
 // Load the request and check the user may manage it before an edit or delete.
@@ -306,8 +308,8 @@ productRouter.get(
   async (req, res, next) => {
     try {
       const requests = await listOrganizationProductRequests(req.params.organizationId);
-      const resumeOwners = await usersWithResumeFiles(applicantIds(requests));
-      res.json(requests.map((request) => toResponse(request, req.user, resumeOwners)));
+      const details = await applicantDetails(applicantIds(requests));
+      res.json(requests.map((request) => toResponse(request, req.user, details)));
     } catch (error) {
       next(error);
     }

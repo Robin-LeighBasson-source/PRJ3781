@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BriefcaseBusiness, FileText, Trash2, UserRound } from 'lucide-react'
+import { ArrowRight, BriefcaseBusiness, FileText, Trash2, UserRound, Users } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageIntro, StatusPill } from '../components/ProductUI.jsx'
 import { useToast } from '../components/ToastContext.jsx'
@@ -170,13 +170,19 @@ function OrganizationPostings({ organization }) {
             </div>
             <StatusPill tone={STATUS_TONES[status]}>{status}</StatusPill>
           </div>
-          {canDelete && (
-            <div className="employer-job__actions">
+          <div className="employer-job__actions">
+            <Link
+              className="text-action"
+              to={kind === 'job' ? `/employers/post-job?applicants=${item.id}` : `/projects/${item.id}`}
+            >
+              <Users size={16} aria-hidden="true" /> View applicants
+            </Link>
+            {canDelete && (
               <button className="text-action" type="button" onClick={() => remove(kind, item)} disabled={busy}>
                 <Trash2 size={16} aria-hidden="true" /> Delete
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </article>
       ))}
       <div className="employer-job__actions">

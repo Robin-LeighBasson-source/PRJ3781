@@ -144,3 +144,44 @@ test('deleting the only owner of a company deletes the company and its jobs and 
   const board = await (await request('/api/jobs')).json()
   assert.equal(board.some((item) => item.id === job.id), false)
 })
+
+test('employers see the profile answers and published portfolio of people who applied', async () => {
+  const employer = await signup('employer')
+  const otherEmployer = await signup('employer')
+  const candidate = await signup('candidate', { displayName: 'Lindiwe Khumalo' })
+  const job = await postJob(employer)
+  const project = await postProject(employer)
+
+  // Not visible to employers in general: applying is what shares the profile.
+  await request('/api/candidate/resume', {
+    method: 'PUT',
+    ...as(candidate),
+    body: { profile: { institution: 'Belgium Campus', fieldOfStudy: 'Computing' }, visibleToEmployers: false },
+  })
+  await request(`/api/jobs/${job.id}/apply`, { method: 'POST', ...as(candidate) })
+  await request(`/api/product-requests/${project.id}/apply`, { method: 'POST', ...as(candidate) })
+
+  const jobApplicant = async () =>
+    (await (await request(`/api/organizations/${employer.user.organizations[0].id}/jobs`, { cookie: employer.cookie })).json())
+      .find((item) => item.id === job.id).applicants[0]
+  const projectApplicant = async () =>
+    (await (await request(`/api/product-requests/${project.id}`, { cookie: employer.cookie })).json()).applicants[0]
+
+  for (const applicant of [await jobApplicant(), await projectApplicant()]) {
+    assert.equal(applicant.name, 'Lindiwe Khumalo')
+    assert.equal(applicant.profile.institution, 'Belgium Campus')
+    assert.equal(applicant.portfolioSlug, null)
+  }
+
+  const own = await (await request('/api/candidate/portfolio', { cookie: candidate.cookie })).json()
+  await request('/api/candidate/portfolio', { method: 'PUT', ...as(candidate), body: { portfolio: own.portfolio } })
+  assert.equal((await jobApplicant()).portfolioSlug, null)
+
+  await request('/api/candidate/portfolio', { method: 'PUT', ...as(candidate), body: { portfolio: { ...own.portfolio, published: true } } })
+  assert.equal((await jobApplicant()).portfolioSlug, own.portfolio.slug)
+  assert.equal((await projectApplicant()).portfolioSlug, own.portfolio.slug)
+
+  // Other organizations still see no applicant details.
+  const otherView = await (await request(`/api/product-requests/${project.id}`, { cookie: otherEmployer.cookie })).json()
+  assert.equal('applicants' in otherView, false)
+})

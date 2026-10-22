@@ -4018,3 +4018,36 @@ p {
   background: var(--color-surface);
   color: var(--color-muted);
 }
+
+/* Applicant cards (Post a job and project pages) */
+.applicant-card {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.applicant-row .applicant-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.applicant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.applicant-profile {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 0.0625rem solid var(--color-line);
+  background: var(--color-white);
+  min-width: 0;
+}
+
+@media (max-width: 40rem) {
+  .applicant-row {
+    flex-wrap: wrap;
+  }
+}

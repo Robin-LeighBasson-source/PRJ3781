@@ -5,7 +5,6 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   Download,
-  ExternalLink,
   Layers3,
   Mail,
   Search,
@@ -18,7 +17,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { PageIntro, PreviewNotice, SkillTags, StatusPill } from '../components/ProductUI.jsx'
 import { useToast } from '../components/ToastContext.jsx'
 import { useAuth } from '../components/AuthContext.jsx'
-import { PortfolioView } from './PortfolioPages.jsx'
+import { ApplicantCard, CandidatePortfolio } from '../components/CandidateProfile.jsx'
 
 const employerServices = [
   {
@@ -113,56 +112,6 @@ function rolesFor(profile) {
     .map((role) => role.trim())
     .filter(Boolean)
     .slice(0, 5)
-}
-
-// A candidate's published portfolio, shown inside their row on Browse candidates.
-function CandidatePortfolio({ candidate }) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(Boolean(candidate.portfolioSlug))
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (!candidate.portfolioSlug) return undefined
-    let active = true
-    fetch(`/api/portfolios/${encodeURIComponent(candidate.portfolioSlug)}`)
-      .then((response) => {
-        if (!response.ok) throw new Error('not available')
-        return response.json()
-      })
-      .then((body) => { if (active) setData(body) })
-      .catch(() => { if (active) setError('This portfolio could not be loaded. Please try again later.') })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [candidate.portfolioSlug])
-
-  if (!candidate.portfolioSlug) {
-    return (
-      <div className="candidate-portfolio candidate-portfolio--empty">
-        <p>{candidate.displayName} has not published a portfolio yet.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="candidate-portfolio">
-      {loading && <p>Loading portfolio...</p>}
-      {!loading && error && (
-        <div className="empty-state">
-          <p>{error}</p>
-        </div>
-      )}
-      {!loading && !error && data && (
-        <>
-          <a className="text-action" href={`/portfolio/${candidate.portfolioSlug}`} target="_blank" rel="noopener noreferrer">
-            Open full portfolio <ExternalLink size={16} aria-hidden="true" />
-          </a>
-          <section className="portfolio-preview" aria-label={`${data.displayName}'s portfolio`}>
-            <PortfolioView portfolio={data} education={data.education} morrowWork={data.morrowWork} />
-          </section>
-        </>
-      )}
-    </div>
-  )
 }
 
 export function BrowseCandidatesPage() {
@@ -307,7 +256,7 @@ export function BrowseCandidatesPage() {
                 </div>
                 {isOpen && (
                   <div className="candidate-row__portfolio" id={`candidate-portfolio-${candidate.id}`}>
-                    <CandidatePortfolio candidate={candidate} />
+                    <CandidatePortfolio name={candidate.displayName} portfolioSlug={candidate.portfolioSlug} />
                   </div>
                 )}
               </article>
@@ -393,15 +342,7 @@ function ApplicantList({ applicants, resumePath, onStatusChange, busy }) {
   return (
     <div className="applicant-list">
       {applicants.map((applicant) => (
-        <div className="applicant-row" key={applicant.id}>
-          <div className="applicant-avatar">{applicant.name.charAt(0).toUpperCase()}</div>
-          <div className="applicant-info">
-            <strong>{applicant.name}</strong>
-            <span>
-              <a href={`mailto:${applicant.email}`}>{applicant.email}</a>
-              {` · applied ${new Date(applicant.appliedAt).toLocaleDateString()}`}
-            </span>
-          </div>
+        <ApplicantCard key={applicant.id} applicant={applicant} resumeHref={resumePath(applicant.id)}>
           {onStatusChange && (
             <label className="compact-select">
               <span className="sr-only">Status for {applicant.name}</span>
@@ -418,12 +359,7 @@ function ApplicantList({ applicants, resumePath, onStatusChange, busy }) {
               </select>
             </label>
           )}
-          {applicant.hasResumeFile && (
-            <a className="text-action" href={resumePath(applicant.id)}>
-              Resume <Download size={16} aria-hidden="true" />
-            </a>
-          )}
-        </div>
+        </ApplicantCard>
       ))}
     </div>
   )
@@ -439,7 +375,8 @@ export function PostJobPage() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [openApplicants, setOpenApplicants] = useState(null)
+  // `?applicants=<id>` (linked from My profile) opens that posting's applicants.
+  const [openApplicants, setOpenApplicants] = useState(() => searchParams.get('applicants'))
   const toast = useToast()
   const { user, apiFetch } = useAuth()
   const organization = user.organizations[0]
@@ -461,6 +398,13 @@ export function PostJobPage() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [apiFetch, jobsPath, projectsPath]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bring a posting opened with `?applicants=<id>` into view once the list has loaded.
+  useEffect(() => {
+    const target = searchParams.get('applicants')
+    if (loading || !target) return
+    document.getElementById(`posting-${target}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setKind = (next) => {
     setEditing(null)
@@ -825,7 +769,7 @@ export function PostJobPage() {
 
         {jobs.length > 0 && <h3>Jobs</h3>}
         {jobs.map((job) => (
-          <article className="employer-job" key={job.id}>
+          <article className="employer-job" key={job.id} id={`posting-${job.id}`}>
             <div className="employer-job__summary">
               <div>
                 <h3>{job.title || 'Untitled job'}</h3>
@@ -845,7 +789,7 @@ export function PostJobPage() {
                 aria-expanded={openApplicants === job.id}
                 onClick={() => setOpenApplicants(openApplicants === job.id ? null : job.id)}
               >
-                <Users size={16} aria-hidden="true" /> {job.applicantCount} applicant{job.applicantCount === 1 ? '' : 's'}
+                <Users size={16} aria-hidden="true" /> {openApplicants === job.id ? 'Hide' : 'View'} {job.applicantCount} applicant{job.applicantCount === 1 ? '' : 's'}
               </button>
               {job.status === 'published' && (
                 <Link className="text-action" to={`/jobs/posted/${job.id}`}>
@@ -883,7 +827,7 @@ export function PostJobPage() {
 
         {projects.length > 0 && <h3>Projects</h3>}
         {projects.map((project) => (
-          <article className="employer-job" key={project.id}>
+          <article className="employer-job" key={project.id} id={`posting-${project.id}`}>
             <div className="employer-job__summary">
               <div>
                 <h3>{project.title}</h3>
@@ -907,7 +851,7 @@ export function PostJobPage() {
                 aria-expanded={openApplicants === project.id}
                 onClick={() => setOpenApplicants(openApplicants === project.id ? null : project.id)}
               >
-                <Users size={16} aria-hidden="true" /> {project.applicantCount} applicant{project.applicantCount === 1 ? '' : 's'}
+                <Users size={16} aria-hidden="true" /> {openApplicants === project.id ? 'Hide' : 'View'} {project.applicantCount} applicant{project.applicantCount === 1 ? '' : 's'}
               </button>
               <Link className="text-action" to={`/projects/${project.id}`}>
                 View project <ArrowRight size={16} aria-hidden="true" />

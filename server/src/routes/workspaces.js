@@ -7,8 +7,8 @@ import {
   getOrganizationJob,
   listOrganizationJobs,
   updateJob,
-  usersWithResumeFiles,
 } from '../db/jobRepository.js'
+import { applicantDetails } from '../db/applicantRepository.js'
 import {
   getResumeForUser,
   getVisibleCandidate,
@@ -39,7 +39,7 @@ function candidateResponse(resume, portfolioSlugs = new Map()) {
   }
 }
 
-function employerJobResponse(job, resumeOwners = new Set()) {
+function employerJobResponse(job, details = new Map()) {
   const applicants = (job.applicants ?? [])
     .filter((applicant) => applicant.user?._id)
     .map((applicant) => ({
@@ -47,7 +47,9 @@ function employerJobResponse(job, resumeOwners = new Set()) {
       name: applicant.user.name,
       email: applicant.user.email,
       appliedAt: applicant.appliedAt,
-      hasResumeFile: resumeOwners.has(String(applicant.user._id)),
+      hasResumeFile: details.get(String(applicant.user._id))?.hasResumeFile ?? false,
+      profile: details.get(String(applicant.user._id))?.profile ?? {},
+      portfolioSlug: details.get(String(applicant.user._id))?.portfolioSlug ?? null,
     }))
   return {
     id: String(job._id),
@@ -70,14 +72,14 @@ function employerJobResponse(job, resumeOwners = new Set()) {
 
 async function respondWithJobs(res, jobs, status = 200) {
   const applicantIds = jobs.flatMap((job) => (job.applicants ?? []).map((applicant) => applicant.user?._id).filter(Boolean))
-  const resumeOwners = await usersWithResumeFiles(applicantIds)
-  return res.status(status).json(jobs.map((job) => employerJobResponse(job, resumeOwners)))
+  const details = await applicantDetails(applicantIds)
+  return res.status(status).json(jobs.map((job) => employerJobResponse(job, details)))
 }
 
 async function respondWithJob(res, organizationId, jobId, status = 200) {
   const job = await getOrganizationJob(organizationId, jobId, { withApplicants: true })
-  const resumeOwners = await usersWithResumeFiles((job.applicants ?? []).map((applicant) => applicant.user?._id).filter(Boolean))
-  return res.status(status).json(employerJobResponse(job, resumeOwners))
+  const details = await applicantDetails((job.applicants ?? []).map((applicant) => applicant.user?._id).filter(Boolean))
+  return res.status(status).json(employerJobResponse(job, details))
 }
 
 // Load a job of this organization into req.job, or 404. Jobs of other
