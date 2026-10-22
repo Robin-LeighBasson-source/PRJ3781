@@ -16,7 +16,6 @@
     "start:api": "npm --workspace @morrow/server run start",
     "crawl": "npm --workspace @morrow/server run crawl --",
     "crawl:export": "npm --workspace @morrow/server run export",
-    "predev": "npm run crawl:jobs",
     "crawl:jobs": "npm --workspace @morrow/server run crawl:jobs",
     "crawl:hackathons": "npm --workspace @morrow/server run crawl:hackathons",
     "fmt": "oxfmt",
