@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, MapPin, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import heroImage from '../assets/morrow-hero.png'
-import { jobs } from '../data/mockData.js'
-import { useToast } from '../components/ToastContext.jsx'
+import { getAllJobs } from '../data/jobs.js'
 
 function HeroSearch() {
   const [keyword, setKeyword] = useState('')
@@ -54,8 +53,6 @@ function HeroSearch() {
 }
 
 function OpportunityRow({ job }) {
-  const toast = useToast()
-
   return (
     <article className="opportunity-row">
       <div className={`company-mark company-mark--${job.tone}`} aria-hidden="true">
@@ -72,18 +69,31 @@ function OpportunityRow({ job }) {
       <span className={`role-tag role-tag--${job.type === 'Internship' ? 'sage' : 'blue'}`}>
         {job.type}
       </span>
-      <button
-        className="role-link"
-        type="button"
-        onClick={() => toast('The job detail page will connect here later.')}
-      >
-        View role <ArrowUpRight size={17} aria-hidden="true" />
-      </button>
+      {job.href ? (
+        <Link className="role-link" to={job.href}>
+          View role <ArrowUpRight size={17} aria-hidden="true" />
+        </Link>
+      ) : job.sourceUrl ? (
+        <a className="role-link" href={job.sourceUrl} target="_blank" rel="noopener noreferrer">
+          View role <ArrowUpRight size={17} aria-hidden="true" />
+        </a>
+      ) : null}
     </article>
   )
 }
 
 export default function HomePage() {
+  const [jobs, setJobs] = useState([])
+
+  //Load jobs posted on Morrow and the crawled listings from jobs.json
+  useEffect(() => {
+    getAllJobs()
+      .then(setJobs)
+      .catch((err) => {
+        console.error('Failed to load jobs:', err)
+      })
+  }, [])
+
   return (
     <main id="main-content">
       <section className="hero">
