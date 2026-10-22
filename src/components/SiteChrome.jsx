@@ -407,7 +407,6 @@ function Footer() {
             A focused place for students and graduates to find work, learning, and practical
             experience.
           </p>
-          <span>Frontend project shell.</span>
         </div>
         <nav className="footer-nav" aria-label="Explore Morrow">
           <h2>Explore</h2>
@@ -419,12 +418,12 @@ function Footer() {
         </nav>
         <div className="footer-contact">
           <h2>Stay in the loop</h2>
-          <p>Preview the newsletter interaction. Nothing is sent or stored.</p>
+          <p>Newsletter sign-up is coming soon.</p>
           <form
             className="newsletter"
             onSubmit={(event) => {
               event.preventDefault()
-              toast(`Preview saved for ${email}. No data was sent.`)
+              toast('Newsletter sign-up is coming soon. Your email was not saved.')
               setEmail('')
             }}
           >
@@ -440,7 +439,7 @@ function Footer() {
               placeholder="Email address"
               required
             />
-            <button type="submit" aria-label="Preview newsletter sign-up">
+            <button type="submit" aria-label="Sign up for the newsletter">
               <ArrowRight size={18} aria-hidden="true" />
             </button>
           </form>
@@ -448,18 +447,18 @@ function Footer() {
       </div>
       <div className="site-footer__bottom">
         <p>© {new Date().getFullYear()} Morrow</p>
-        <div className="social-links" aria-label="Social previews">
+        <div className="social-links" aria-label="Social links">
           <button
             type="button"
-            aria-label="Instagram preview"
-            onClick={() => toast('Social links are placeholders in this frontend shell.')}
+            aria-label="Instagram"
+            onClick={() => toast('Our social pages are coming soon.')}
           >
             <Instagram aria-hidden="true" />
           </button>
           <button
             type="button"
-            aria-label="LinkedIn preview"
-            onClick={() => toast('Social links are placeholders in this frontend shell.')}
+            aria-label="LinkedIn"
+            onClick={() => toast('Our social pages are coming soon.')}
           >
             <Linkedin aria-hidden="true" />
           </button>
