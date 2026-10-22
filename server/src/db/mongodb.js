@@ -15,8 +15,11 @@ const __dirname = path.dirname(__filename);
 
 // Load the repository-root .env, which is where MONGODB_URI lives both for local
 // runs and for the copy that docker-compose reads. In Docker the value arrives as
-// a real environment variable, so a missing file here is harmless.
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+// a real environment variable, so a missing file here is harmless. server/.env is
+// still read as a fallback for local setups that keep MONGODB_URI there; dotenv
+// never overwrites a variable that is already set, so the root file wins.
+dotenv.config({ path: path.resolve(__dirname, "../../../.env"), quiet: true });
+dotenv.config({ path: path.resolve(__dirname, "../../.env"), quiet: true });
 
 /**
  * Connect to MongoDB and make each collection's indexes match its schema. Syncing

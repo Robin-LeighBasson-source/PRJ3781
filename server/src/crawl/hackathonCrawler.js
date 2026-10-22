@@ -416,6 +416,9 @@ export async function main() {
     await saveHackathons(hackathons, poolPath);
     await saveHackathons(firstSelection, outputPath);
 
+    //Remember where this run's new hackathons start, so they can be shown as they are found
+    const shownCount = hackathons.length;
+
     //Rebuild the duplicate trackers because dead hackathons were removed
     seenUrls.clear();
     seenHackathonKeys.clear();
@@ -636,6 +639,14 @@ export async function main() {
 
             //Save progress after each group of scrapes
             await saveHackathons(hackathons, poolPath);
+
+            //Show the new hackathons on the page straight away, so they are kept if the run is stopped early
+            if (addedThisRun > 0) {
+                await saveHackathons(
+                    [...hackathons.slice(shownCount), ...firstSelection].slice(0, displayCount),
+                    outputPath
+                );
+            }
 
             //Pause between scrape groups to reduce request pressure
             await sleep(delayBetweenScrapes);

@@ -7,14 +7,15 @@ import {
   getOrganizationJob,
   listOrganizationJobs,
   updateJob,
-  usersWithResumeFiles,
 } from '../db/jobRepository.js'
+import { applicantDetails } from '../db/applicantRepository.js'
 import {
   getResumeForUser,
   getVisibleCandidate,
   listVisibleCandidates,
   openResumeFileStream,
 } from '../db/resumeRepository.js'
+import { publishedPortfolioSlugs } from '../db/portfolioRepository.js'
 import { missingForPublish, validateJobFields } from './jobs.js'
 import { sendResumeFile } from './resume.js'
 
@@ -25,18 +26,20 @@ export const workspaceRouter = express.Router()
 const WORK_SETUPS = ['Flexible', 'On-site', 'Hybrid', 'Remote']
 const JOB_EDITORS = ['owner', 'recruiter']
 
-function candidateResponse(resume) {
+function candidateResponse(resume, portfolioSlugs = new Map()) {
   return {
     id: String(resume.user._id),
     displayName: resume.user.name,
     email: resume.user.email,
     profile: resume.profile ?? {},
     hasResumeFile: Boolean(resume.file?.fileId),
+    // Only set when the candidate has published their portfolio.
+    portfolioSlug: portfolioSlugs.get(String(resume.user._id)) ?? null,
     updatedAt: resume.updatedAt,
   }
 }
 
-function employerJobResponse(job, resumeOwners = new Set()) {
+function employerJobResponse(job, details = new Map()) {
   const applicants = (job.applicants ?? [])
     .filter((applicant) => applicant.user?._id)
     .map((applicant) => ({
@@ -44,7 +47,9 @@ function employerJobResponse(job, resumeOwners = new Set()) {
       name: applicant.user.name,
       email: applicant.user.email,
       appliedAt: applicant.appliedAt,
-      hasResumeFile: resumeOwners.has(String(applicant.user._id)),
+      hasResumeFile: details.get(String(applicant.user._id))?.hasResumeFile ?? false,
+      profile: details.get(String(applicant.user._id))?.profile ?? {},
+      portfolioSlug: details.get(String(applicant.user._id))?.portfolioSlug ?? null,
     }))
   return {
     id: String(job._id),
@@ -67,14 +72,14 @@ function employerJobResponse(job, resumeOwners = new Set()) {
 
 async function respondWithJobs(res, jobs, status = 200) {
   const applicantIds = jobs.flatMap((job) => (job.applicants ?? []).map((applicant) => applicant.user?._id).filter(Boolean))
-  const resumeOwners = await usersWithResumeFiles(applicantIds)
-  return res.status(status).json(jobs.map((job) => employerJobResponse(job, resumeOwners)))
+  const details = await applicantDetails(applicantIds)
+  return res.status(status).json(jobs.map((job) => employerJobResponse(job, details)))
 }
 
 async function respondWithJob(res, organizationId, jobId, status = 200) {
   const job = await getOrganizationJob(organizationId, jobId, { withApplicants: true })
-  const resumeOwners = await usersWithResumeFiles((job.applicants ?? []).map((applicant) => applicant.user?._id).filter(Boolean))
-  return res.status(status).json(employerJobResponse(job, resumeOwners))
+  const details = await applicantDetails((job.applicants ?? []).map((applicant) => applicant.user?._id).filter(Boolean))
+  return res.status(status).json(employerJobResponse(job, details))
 }
 
 // Load a job of this organization into req.job, or 404. Jobs of other
@@ -99,7 +104,11 @@ workspaceRouter.get(
     const workSetup = WORK_SETUPS.includes(req.query.workSetup) ? req.query.workSetup : ''
     try {
       const candidates = await listVisibleCandidates({ query, workSetup })
-      res.json({ organizationId: req.params.organizationId, items: candidates.map(candidateResponse) })
+      const portfolioSlugs = await publishedPortfolioSlugs(candidates.map((resume) => resume.user._id))
+      res.json({
+        organizationId: req.params.organizationId,
+        items: candidates.map((resume) => candidateResponse(resume, portfolioSlugs)),
+      })
     } catch (error) {
       next(error)
     }

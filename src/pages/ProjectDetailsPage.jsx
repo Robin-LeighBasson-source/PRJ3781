@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useToast } from "../components/ToastContext.jsx";
 import { useAuth } from "../components/AuthContext.jsx";
+import { ApplicantCard } from "../components/CandidateProfile.jsx";
 
 const STATUSES = ["Open", "In Progress", "Completed"];
 
@@ -268,17 +269,11 @@ export default function ProjectDetailsPage() {
               {project.applicants.length > 0 ? (
                 <div className="applicant-list">
                   {project.applicants.map((applicant) => (
-                    <div className="applicant-row" key={applicant.id}>
-                      <div className="applicant-avatar">{applicant.name.charAt(0).toUpperCase()}</div>
-
-                      <div className="applicant-info">
-                        <strong>{applicant.name}</strong>
-                        <span>
-                          <a href={`mailto:${applicant.email}`}>{applicant.email}</a>
-                          {" · applied "}
-                          {new Date(applicant.appliedAt).toLocaleDateString()}
-                        </span>
-                      </div>
+                    <ApplicantCard
+                      key={applicant.id}
+                      applicant={applicant}
+                      resumeHref={`/api/organizations/${project.organizationId}/product-requests/${id}/applicants/${applicant.id}/resume`}
+                    >
                       {viewer.canManage ? (
                         <label className="compact-select">
                           <span className="sr-only">Status for {applicant.name}</span>
@@ -297,7 +292,7 @@ export default function ProjectDetailsPage() {
                       ) : (
                         <span className="applicant-status">{APPLICANT_STATUS_LABELS[applicant.status]}</span>
                       )}
-                    </div>
+                    </ApplicantCard>
                   ))}
                 </div>
               ) : (

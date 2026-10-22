@@ -128,7 +128,7 @@ export function JobList({ items, showMatch = false }) {
     return (
       <div className="empty-state">
         <Search size={28} aria-hidden="true" />
-        <h2>No sample jobs match those filters</h2>
+        <h2>No jobs match those filters</h2>
         <p>Try a broader keyword or reset the job type.</p>
       </div>
     )

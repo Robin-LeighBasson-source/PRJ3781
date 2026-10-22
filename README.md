@@ -15,6 +15,9 @@ Express API in `server/`. Accounts and user data are stored in MongoDB.
   `/projects/:id`, and the employer selects applicants and marks work completed.
 - **Portfolios** - candidates build a portfolio on `/portfolio-builder` from their
   resume and completed projects, and share it at `/portfolio/:slug`.
+- **My profile** - `/account` (click your name in the header) shows the personal
+  information stored about you, lets employers delete their jobs and projects, and
+  deletes the whole account after you re-enter your password.
 - **Discover** - certifications come from a crawler that collects public Coursera
   and Microsoft Learn listings into SQLite (see [server/README.md](server/README.md)).
   Courses, hackathons and crawled jobs are collected with Firecrawl into
@@ -37,10 +40,13 @@ Sign-up, resumes, jobs, projects and portfolios need the API and a MongoDB
 database. Set `MONGODB_URI` in `server/.env`, then start the API in a second
 terminal with `npm run dev:api`.
 
-`npm run dev` first runs the job crawler (`npm run crawl:jobs`), which needs a
-`FIRECRAWL_API_KEY` in `jobCrawler.env` at the repository root. Refresh the other
-Firecrawl listings with `npm run crawl:hackathons`, or
-`node server/src/crawl/courseCrawler.js` for courses.
+`npm run dev` starts Vite and then, in the background, runs the job, hackathon and
+course crawlers one after another. They need a `FIRECRAWL_API_KEY` in
+`jobCrawler.env` at the repository root (see `jobCrawler.env.example`) and use
+Firecrawl credits on every run; without a key they are skipped. Each crawler saves
+to `public/data/*.json` as it goes, so refresh the page to see new listings. Use
+`npm run dev:web` to start Vite without crawling, or run one crawler on its own with
+`npm run crawl:jobs`, `npm run crawl:hackathons` or `npm run crawl:courses`.
 
 Format the repository or check formatting without writing changes:
 
@@ -74,6 +80,10 @@ employer even without that opt-in.
 Jobs start as drafts and are only shown on `/jobs` once published. Projects accept
 applications while they are Open and before their deadline, if one is set.
 Completed projects can be added to the candidate's portfolio.
+
+Deleting an account on `/account` removes the user, their sessions, resume file and
+answers, portfolio, and their applications. An employer's company is deleted with
+all its jobs and projects when they are its only owner; otherwise they just leave it.
 
 ## Run locally with Docker
 
@@ -210,4 +220,4 @@ rebuild required. Certifications are also stored in the SQLite catalogue on
 - `/discover/jobs`, `/discover/hackathons`, `/discover/certifications`
 - `/portfolio-builder`, `/portfolio/:slug`
 - `/projects`, `/projects/:id`
-- `/auth`
+- `/auth`, `/account`

@@ -409,6 +409,9 @@ export async function main() {
     await saveCourses(courses, poolPath);
     await saveCourses(firstSelection, outputPath);
 
+    // Remember where this run's new courses start, so they can be shown as they are found
+    const shownCount = courses.length;
+
     // Rebuild the duplicate trackers because dead courses were removed
     seenUrls.clear();
     seenCourseKeys.clear();
@@ -612,6 +615,14 @@ export async function main() {
 
             // Save progress after each group of scrapes
             await saveCourses(courses, poolPath);
+
+            // Show the new courses on the page straight away, so they are kept if the run is stopped early
+            if (addedThisRun > 0) {
+                await saveCourses(
+                    [...courses.slice(shownCount), ...firstSelection].slice(0, displayCount),
+                    outputPath
+                );
+            }
 
             await sleep(delayBetweenScrapes);
         }

@@ -9,6 +9,11 @@ export async function getHackathons() {
 
     const data = await response.json();
 
+    return sortUpcoming(mapHackathons(data));
+}
+
+//Map the raw hackathons into the shape the page uses
+function mapHackathons(data) {
     return data
         .filter((hackathon) => hackathon.title)
         .map((hackathon, index) => ({
@@ -30,6 +35,45 @@ export async function getHackathons() {
                 hackathon.registrationUrl || hackathon.sourceUrl || "",
             sourceUrl: hackathon.sourceUrl || "",
         }));
+}
+
+//Hide events that have already ended, then sort by start date, soonest first.
+//Events without real dates (e.g. "TBA" or "Not specified") are kept and go last.
+function sortUpcoming(hackathons) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dated = [];
+    const undated = [];
+
+    for (const hackathon of hackathons) {
+        const start = parseDate(hackathon.startDate);
+        const end = parseDate(hackathon.endDate);
+
+        if (end && end < today) continue;
+
+        if (start && end) {
+            dated.push({ hackathon, start });
+        } else {
+            undated.push(hackathon);
+        }
+    }
+
+    dated.sort((a, b) => a.start - b.start);
+
+    return [...dated.map((item) => item.hackathon), ...undated];
+}
+
+//Return a Date for a real date string, or null for values like "TBA"
+function parseDate(value) {
+    if (typeof value !== "string" || !value.trim()) return null;
+
+    //Read plain YYYY-MM-DD dates as local days, not UTC midnight
+    const day = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (day) return new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
+
+    const time = Date.parse(value);
+    return Number.isNaN(time) ? null : new Date(time);
 }
 
 //Normalize the event format

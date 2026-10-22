@@ -30,3 +30,13 @@ export async function savePortfolio(userId, portfolio) {
     { new: true, upsert: true, runValidators: true, lean: true }
   );
 }
+
+/**
+ * Map of user id (as a string) to portfolio slug, for those of `userIds` whose
+ * portfolio is published. Unpublished portfolios stay private.
+ */
+export async function publishedPortfolioSlugs(userIds) {
+  if (!userIds.length) return new Map();
+  const portfolios = await Portfolio.find({ user: { $in: userIds }, published: true }, { user: 1, slug: 1 }).lean();
+  return new Map(portfolios.map((portfolio) => [String(portfolio.user), portfolio.slug]));
+}

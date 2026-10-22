@@ -131,3 +131,24 @@ test('education comes from the resume and completed Morrow projects appear as ve
   assert.equal(publicView.education, null)
   assert.equal(publicView.morrowWork.length, 1)
 })
+
+test('employers browsing candidates get a link only to published portfolios', async () => {
+  const employer = await signup('employer')
+  const candidate = await signup('candidate', { displayName: 'Ayanda Zulu' })
+  await request('/api/candidate/resume', {
+    method: 'PUT',
+    ...as(candidate),
+    body: { profile: { institution: 'Belgium Campus' }, visibleToEmployers: true },
+  })
+  const candidatesPath = `/api/organizations/${employer.user.organizations[0].id}/candidates?q=Ayanda`
+  const listed = async () => (await (await request(candidatesPath, { cookie: employer.cookie })).json()).items[0]
+
+  assert.equal((await listed()).portfolioSlug, null)
+
+  const { portfolio } = await getOwn(candidate)
+  assert.equal((await save(candidate, portfolio)).status, 200)
+  assert.equal((await listed()).portfolioSlug, null)
+
+  assert.equal((await save(candidate, { ...portfolio, published: true })).status, 200)
+  assert.equal((await listed()).portfolioSlug, portfolio.slug)
+})
