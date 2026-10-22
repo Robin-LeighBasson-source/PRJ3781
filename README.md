@@ -15,6 +15,9 @@ Express API in `server/`. Accounts and user data are stored in MongoDB.
   `/projects/:id`, and the employer selects applicants and marks work completed.
 - **Portfolios** - candidates build a portfolio on `/portfolio-builder` from their
   resume and completed projects, and share it at `/portfolio/:slug`.
+- **My profile** - `/account` (click your name in the header) shows the personal
+  information stored about you, lets employers delete their jobs and projects, and
+  deletes the whole account after you re-enter your password.
 - **Discover** - certifications come from a crawler that collects public Coursera
   and Microsoft Learn listings into SQLite (see [server/README.md](server/README.md)).
   Courses, hackathons and crawled jobs are collected with Firecrawl into
@@ -78,6 +81,10 @@ Jobs start as drafts and are only shown on `/jobs` once published. Projects acce
 applications while they are Open and before their deadline, if one is set.
 Completed projects can be added to the candidate's portfolio.
 
+Deleting an account on `/account` removes the user, their sessions, resume file and
+answers, portfolio, and their applications. An employer's company is deleted with
+all its jobs and projects when they are its only owner; otherwise they just leave it.
+
 ## Run locally with Docker
 
 Both services in one command, no Node or native build toolchain on the host:
@@ -126,4 +133,4 @@ picks it up automatically. Clear everything, volumes included, with
 - `/discover/jobs`, `/discover/hackathons`, `/discover/certifications`
 - `/portfolio-builder`, `/portfolio/:slug`
 - `/projects`, `/projects/:id`
-- `/auth`
+- `/auth`, `/account`

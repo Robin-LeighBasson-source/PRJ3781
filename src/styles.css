@@ -3906,3 +3906,79 @@ p {
   color: var(--color-muted);
   font-size: 0.8125rem;
 }
+
+/* My profile (/account) */
+.account-summary:hover {
+  text-decoration: underline;
+}
+
+.account-page {
+  display: grid;
+  gap: var(--space-2xl);
+  margin-top: var(--space-2xl);
+  margin-bottom: var(--space-2xl);
+}
+
+.account-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-md);
+  margin: 0;
+}
+
+.account-details dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.account-details dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.account-muted {
+  color: var(--color-muted);
+}
+
+.account-danger {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 0.0625rem solid var(--color-coral);
+  background: var(--color-coral-soft);
+}
+
+.account-danger ul {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.account-danger .form-field {
+  max-width: 24rem;
+}
+
+.account-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-weight: 700;
+}
+
+.account-error {
+  color: oklch(0.45 0.18 30);
+  font-weight: 700;
+}
+
+.button--danger {
+  border-color: oklch(0.5 0.2 30);
+  background: oklch(0.5 0.2 30);
+  color: var(--color-white);
+}
+
+.button--danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

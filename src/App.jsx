@@ -14,7 +14,8 @@ import {
 } from './pages/DiscoveryPages.jsx'
 import { AccessDeniedPage, AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
 import { ToastContext } from './components/ToastContext.jsx'
-import { AuthProvider, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
+import { AuthProvider, RequireAuth, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
+import { AccountPage } from './pages/AccountPage.jsx'
 import ProjectDetailsPage from "./pages/ProjectDetailsPage.jsx"
 import JobDetailsPage from "./pages/JobDetailsPage.jsx"
 import { PortfolioBuilderPage, PublicPortfolioPage } from "./pages/PortfolioPages.jsx"
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:id" element={<ProjectDetailsPage />} />
         <Route path="auth" element={<AuthPage />} />
+        <Route path="account" element={<RequireAuth><AccountPage /></RequireAuth>} />
         <Route path="forbidden" element={<AccessDeniedPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

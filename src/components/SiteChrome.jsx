@@ -284,7 +284,7 @@ function Header() {
           <div className="header-actions">
             <div className="desktop-auth desktop-only" aria-label="Account actions">
               {user ? <>
-                <span className="account-summary"><UserRound size={16} aria-hidden="true" /> {user.displayName}</span>
+                <Link className="account-summary" to="/account" title="My profile"><UserRound size={16} aria-hidden="true" /> {user.displayName}</Link>
                 <button className="button button--login" type="button" onClick={signOut}><LogOut size={16} aria-hidden="true" /> Log out</button>
               </> : <>
                 <Link className="button button--login" to="/auth?mode=login">
@@ -335,13 +335,22 @@ function Header() {
             </div>
             <div className="mobile-account-panel__actions">
               {user ? (
-                <button
-                  className="button button--login"
-                  type="button"
-                  onClick={signOut}
-                >
-                  <LogOut size={16} aria-hidden="true" /> Log out
-                </button>
+                <>
+                  <Link
+                    className="button button--login"
+                    to="/account"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <UserRound size={16} aria-hidden="true" /> My profile
+                  </Link>
+                  <button
+                    className="button button--login"
+                    type="button"
+                    onClick={signOut}
+                  >
+                    <LogOut size={16} aria-hidden="true" /> Log out
+                  </button>
+                </>
               ) : (
                 <>
                   <Link

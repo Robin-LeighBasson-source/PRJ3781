@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
 const AuthContext = createContext(null)
@@ -79,8 +79,20 @@ export function AuthProvider({ children }) {
     return fetch(path, { ...options, headers }).then(parseResponse)
   }, [csrfToken])
 
-  const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch }), [
-    user, loading, login, signup, logout, apiFetch,
+  // Permanently delete the logged-in account; the server also ends the session.
+  // `onDeleted` runs just before the user is cleared (e.g. to leave a page that
+  // needs a login). Navigation is a transition (v7_startTransition), so clearing
+  // the user is one too; both then render together, before any login redirect.
+  const deleteAccount = useCallback(async (password, onDeleted) => {
+    await apiFetch('/api/account', { method: 'DELETE', body: JSON.stringify({ password }) })
+    startTransition(() => {
+      onDeleted?.()
+      applyAuth(null)
+    })
+  }, [apiFetch, applyAuth])
+
+  const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch, deleteAccount }), [
+    user, loading, login, signup, logout, apiFetch, deleteAccount,
   ])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

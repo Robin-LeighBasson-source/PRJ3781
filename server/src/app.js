@@ -9,6 +9,7 @@ import { resumeRouter } from './routes/resume.js'
 import { productRouter } from './routes/productRequests.js'
 import { jobsRouter } from './routes/jobs.js'
 import { portfolioRouter } from './routes/portfolio.js'
+import { accountRouter } from './routes/account.js'
 
 export function createApp() {
   const app = express()
@@ -30,6 +31,7 @@ export function createApp() {
   app.use('/api', productRouter)
   app.use('/api', jobsRouter)
   app.use('/api', portfolioRouter)
+  app.use('/api', accountRouter)
 
   app.use((error, req, res, next) => {
     console.error('[api]', error.message)
