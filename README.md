@@ -82,8 +82,10 @@ picks it up automatically. Clear everything, volumes included, with
 ## Deploy to a VPS with a domain and HTTPS
 
 `docker-compose.prod.yml` runs the production stack: the API built without
-`--watch`, the static bundle behind nginx, and Caddy as the only public service.
-Caddy obtains and renews the Let's Encrypt certificate for `DOMAIN` automatically.
+`--watch`, and Caddy as the only public service. Caddy serves the built frontend,
+proxies `/api` to the API container, and obtains and renews the Let's Encrypt
+certificate for `DOMAIN` automatically. nginx is used only by the local `preview`
+profile and is not part of the VPS stack.
 
 1. Point an `A` record for the domain (and `AAAA` if the VPS has IPv6) at the VPS
    public IP. Wait for DNS to resolve before starting Caddy.

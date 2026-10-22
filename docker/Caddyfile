@@ -6,16 +6,19 @@
 
 {$DOMAIN} {
 	encode zstd gzip
+	root * /srv
 
-	# The API is reached directly, not through nginx, so Caddy's X-Forwarded-For
-	# is the only proxy hop the app has to trust (see `trust proxy` in app.js).
+	# The API is reached directly, so Caddy's X-Forwarded-For is the only proxy
+	# hop the app has to trust (see `trust proxy` in app.js).
 	handle /api/* {
 		reverse_proxy api:8787
 	}
 
-	# Everything else is the built React bundle served by nginx.
+	# The built React bundle. React Router owns the route table, so any path
+	# that is not a real file returns index.html instead of a 404.
 	handle {
-		reverse_proxy web:80
+		try_files {path} /index.html
+		file_server
 	}
 
 	header {

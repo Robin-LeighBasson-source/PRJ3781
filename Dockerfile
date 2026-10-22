@@ -71,10 +71,19 @@ COPY . .
 RUN npm run build
 
 # ---------------------------------------------------------------------------
-# web - the built bundle behind nginx, with /api proxied to the api service so
-# the frontend stays same-origin exactly as vite.config.js arranges in dev.
+# web - the built bundle behind nginx for the local `preview` profile. The VPS
+# stack uses the caddy stage instead and does not run nginx at all.
 # ---------------------------------------------------------------------------
 FROM nginx:1.27-alpine AS web
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+
+# ---------------------------------------------------------------------------
+# caddy - production web server: TLS, the SPA bundle, and /api reverse proxy.
+# The bundle is baked in, so no nginx or bind mount is needed on the VPS.
+# ---------------------------------------------------------------------------
+FROM caddy:2.8-alpine AS caddy
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv
+EXPOSE 80 443

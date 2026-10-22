@@ -3,8 +3,9 @@ name: morrow-prod
 # Production stack for a VPS:
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# Caddy terminates TLS on 80/443 and is the only service exposed to the internet.
-# The API and web containers are reachable only on the compose network.
+# Caddy terminates TLS, serves the built frontend, and proxies /api. It is the
+# only service exposed to the internet; the API is reachable only on the compose
+# network. There is no nginx in this stack.
 
 services:
   api:
@@ -47,19 +48,12 @@ services:
       retries: 5
       start_period: 20s
 
-  web:
-    image: morrow-web:prod
+  caddy:
+    image: morrow-caddy:prod
     pull_policy: build
     build:
       context: .
-      target: web
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-
-  caddy:
-    image: caddy:2.8-alpine
+      target: caddy
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env before starting the stack}
@@ -69,14 +63,11 @@ services:
       - '443:443'
       - '443:443/udp'
     volumes:
-      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
       api:
         condition: service_healthy
-      web:
-        condition: service_started
 
 volumes:
   api-data:
