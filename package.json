@@ -19,6 +19,7 @@
     "predev": "npm run crawl:jobs",
     "crawl:jobs": "npm --workspace @morrow/server run crawl:jobs",
     "crawl:hackathons": "npm --workspace @morrow/server run crawl:hackathons",
+    "crawl:courses": "npm --workspace @morrow/server run crawl:courses",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test:server": "npm --workspace @morrow/server run test"

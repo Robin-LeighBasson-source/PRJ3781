@@ -10,6 +10,7 @@
     "crawl": "node src/crawl/cli.js",
     "crawl:jobs": "node src/crawl/jobCrawler.js",
     "crawl:hackathons": "node src/crawl/hackathonCrawler.js",
+    "crawl:courses": "node src/crawl/courseCrawler.js",
     "export": "node src/crawl/export.js",
     "test": "node --test src/**/*.test.js"
   },

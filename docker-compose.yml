@@ -31,6 +31,8 @@ services:
       MICROSOFT_LEARN_ENABLED: ${MICROSOFT_LEARN_ENABLED:-1}
       COURSERA_ENABLED: ${COURSERA_ENABLED:-1}
       COURSERA_USE_CATALOG_API: ${COURSERA_USE_CATALOG_API:-1}
+      # Needed by crawl:jobs / crawl:hackathons; jobCrawler.env is host-only.
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
     ports:
       - '127.0.0.1:8787:8787'
     volumes:

@@ -132,6 +132,40 @@ repeat the ACME challenge. Accounts and resumes are in MongoDB Atlas, not on the
 VPS. If the domain is behind Cloudflare, set the DNS record to **DNS only** for
 the first certificate issuance.
 
+### Crawlers on the VPS
+
+The scheduled crawl is off by default (`MORROW_CRAWL_SCHEDULE_ENABLED=0`), so run
+crawls explicitly as one-off commands in the running API container.
+
+Certification catalogue (Microsoft Learn and Coursera, no API key):
+
+```bash
+docker compose -f docker-compose.prod.yml exec api \
+  npm run crawl -- --provider=microsoft-learn --max-pages=5
+```
+
+Job, hackathon and course crawlers use Firecrawl. Add the key from your local
+`jobCrawler.env` to the VPS `.env` (that file is git-ignored and is not in the
+image):
+
+```dotenv
+FIRECRAWL_API_KEY=fc-...
+```
+
+Then run:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api npm run crawl:jobs
+docker compose -f docker-compose.prod.yml exec api npm run crawl:hackathons
+docker compose -f docker-compose.prod.yml exec api npm run crawl:courses
+```
+
+The crawlers write `jobs.json`, `hackathons.json`, `courses.json` and
+`certifications.json` into the `crawler-data` volume. Caddy mounts that volume
+read-only at `/srv/data`, so the frontend sees new listings immediately — no
+rebuild required. Certifications are also stored in the SQLite catalogue on
+`api-data` and served by `/api`.
+
 ## Main routes
 
 - `/` - homepage

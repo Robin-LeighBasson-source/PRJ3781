@@ -41,9 +41,16 @@ services:
       MICROSOFT_LEARN_ENABLED: ${MICROSOFT_LEARN_ENABLED:-1}
       COURSERA_ENABLED: ${COURSERA_ENABLED:-1}
       COURSERA_USE_CATALOG_API: ${COURSERA_USE_CATALOG_API:-1}
+      # Required by crawl:jobs, crawl:hackathons and the course crawler. The
+      # local jobCrawler.env is git-ignored and is not in the image, so the key
+      # has to come from the VPS .env instead.
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
     volumes:
       - api-data:/app/server/data
       - api-cache:/app/server/.cache
+      # Crawlers rewrite public/data/*.json here; Caddy mounts the same volume
+      # below, so new jobs/hackathons/certifications appear without a rebuild.
+      - crawler-data:/app/public/data
     healthcheck:
       test:
         - CMD
@@ -76,6 +83,8 @@ services:
     volumes:
       - caddy-data:/data
       - caddy-config:/config
+      # Read-only view of the JSON files the crawlers write in the api service.
+      - crawler-data:/srv/data:ro
     depends_on:
       api:
         condition: service_healthy
@@ -83,5 +92,6 @@ services:
 volumes:
   api-data:
   api-cache:
+  crawler-data:
   caddy-data:
   caddy-config:
