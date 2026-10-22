@@ -19,6 +19,7 @@
     "predev": "npm run crawl:jobs",
     "crawl:jobs": "npm --workspace @morrow/server run crawl:jobs",
     "crawl:hackathons": "npm --workspace @morrow/server run crawl:hackathons",
+    "crawl:courses": "npm --workspace @morrow/server run crawl:courses",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test:server": "npm --workspace @morrow/server run test"
@@ -33,7 +34,7 @@
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.30.1"
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

@@ -43,6 +43,27 @@ USER node
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ---------------------------------------------------------------------------
+# api - the crawler service and JSON API for production. Source is copied in
+# (no bind mounts, no --watch) and runs as the unprivileged node user.
+# ---------------------------------------------------------------------------
+FROM ${NODE_IMAGE} AS api
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node server/package.json ./server/
+COPY --chown=node:node server/src ./server/src
+# The crawler exports its fallback snapshot here; serving the API does not need it.
+COPY --chown=node:node public/data ./public/data
+
+RUN mkdir -p /app/server/data /app/server/.cache \
+ && chown -R node:node /app/server
+
+USER node
+EXPOSE 8787
+CMD ["npm", "run", "start:api"]
+
+# ---------------------------------------------------------------------------
 # build - the static frontend bundle.
 # ---------------------------------------------------------------------------
 FROM deps AS build
@@ -50,10 +71,19 @@ COPY . .
 RUN npm run build
 
 # ---------------------------------------------------------------------------
-# web - the built bundle behind nginx, with /api proxied to the api service so
-# the frontend stays same-origin exactly as vite.config.js arranges in dev.
+# web - the built bundle behind nginx for the local `preview` profile. The VPS
+# stack uses the caddy stage instead and does not run nginx at all.
 # ---------------------------------------------------------------------------
 FROM nginx:1.27-alpine AS web
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+
+# ---------------------------------------------------------------------------
+# caddy - production web server: TLS, the SPA bundle, and /api reverse proxy.
+# The bundle is baked in, so no nginx or bind mount is needed on the VPS.
+# ---------------------------------------------------------------------------
+FROM caddy:2.8-alpine AS caddy
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist /srv
+EXPOSE 80 443
